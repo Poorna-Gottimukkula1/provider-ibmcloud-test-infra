@@ -22,3 +22,13 @@ output "network" {
   value       = ibm_pi_network.public_network
   description = "Network used for the deployment"
 }
+
+output "master_instace_ids" {
+  value       = module.masters.ids
+  description = "Instance Id used for csi driver"
+}
+
+output "worker_instace_ids" {
+  value       = module.workers.ids
+  description = "Instance Id used for csi driver"
+}
