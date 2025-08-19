@@ -85,6 +85,7 @@ type deployer struct {
 	ExtraVars             map[string]string `desc:"Passes extra-vars to ansible playbook, enter a string of key=value pairs"`
 	SetKubeconfig         bool              `desc:"Flag to set kubeconfig"`
 	TargetProvider        string            `desc:"provider value to be used(powervs, vpc)"`
+	FetchInstanceData     bool              `desc:"Flag to fetch instance data and generate instance file"`
 }
 
 func (d *deployer) Version() string {
@@ -142,10 +143,11 @@ func New(opts types.Options) (types.Deployer, *pflag.FlagSet) {
 				COSCredType:     "shared",
 			},
 		},
-		RetryOnTfFailure: 1,
-		Playbook:         "install-k8s.yml",
-		SetKubeconfig:    true,
-		TargetProvider:   "powervs",
+		RetryOnTfFailure:  1,
+		Playbook:          "install-k8s.yml",
+		SetKubeconfig:     true,
+		TargetProvider:    "powervs",
+		FetchInstanceData: false, // Default to false unless the flag is passed
 	}
 	flagSet, err := gpflag.Parse(d)
 	if err != nil {
@@ -200,6 +202,66 @@ func (d *deployer) Up() error {
 			break
 		}
 	}
+	if d.FetchInstanceData {
+		// --- Fetch instance list from Terraform output ---
+		mastersInstanceListJSON, err := terraform.Output(d.tmpDir, d.TargetProvider, "-json", "master_instance_list")
+		if err != nil {
+			return fmt.Errorf("failed to get masters instance list: %v", err)
+		}
+
+		workersInstanceListJSON, err := terraform.Output(d.tmpDir, d.TargetProvider, "-json", "worker_instance_list")
+		if err != nil {
+			return fmt.Errorf("failed to get workers instance list: %v", err)
+		}
+
+		// Unmarshal masters instance list into a Go struct
+		var mastersInstances []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal([]byte(mastersInstanceListJSON), &mastersInstances); err != nil {
+			return fmt.Errorf("failed to unmarshal masters instance list: %v", err)
+		}
+
+		// Unmarshal workers instance list into a Go struct
+		var workersInstances []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal([]byte(workersInstanceListJSON), &workersInstances); err != nil {
+			return fmt.Errorf("failed to unmarshal workers instance list: %v", err)
+		}
+
+		// Combine all instance details in order (masters + workers)
+		allInstances := append(mastersInstances, workersInstances...)
+
+		// Save combined instance list to file so Ansible can consume it
+		instanceListFile := filepath.Join(d.tmpDir, "instance_list.json")
+		instanceListData, err := json.MarshalIndent(allInstances, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal instance list: %v", err)
+		}
+
+		instanceFile, err := os.Create(instanceListFile)
+		if err != nil {
+			klog.Errorf("Error while creating the instance list file: %v", err)
+			return fmt.Errorf("failed to create instance list file: %v", err)
+		}
+
+		// Write the JSON data to the file
+		if _, err := instanceFile.Write(instanceListData); err != nil {
+			klog.Errorf("Failed to write instance list data to file: %v", err)
+			return fmt.Errorf("failed to write instance list file: %v", err)
+		}
+		fmt.Println("All Instances:", allInstances)
+		// Print all instances in a readable format (as JSON)
+		fmt.Println("All Instances:", string(instanceListData))
+
+		// Print instance list path using klog
+		klog.Infof("Saved all instances to file: %s", instanceListFile)
+
+	}
+	// --- Generate the Ansible inventory file for masters/workers IPs ---
 	inventory := AnsibleInventory{}
 	tfMetaOutput, err := terraform.Output(d.tmpDir, d.TargetProvider)
 	if err != nil {
