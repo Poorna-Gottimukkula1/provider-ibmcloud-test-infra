@@ -1,0 +1,33 @@
+---
+- name: Patch Kubernetes nodes with providerID
+  hosts: localhost
+  gather_facts: no
+  vars:
+    instance_list_file: "./{{ cluster_name }}/instance_list.json"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+
+  tasks:
+    - name: Load instance list from file
+      ansible.builtin.read_json:
+        path: "{{ instance_list_file }}"
+      register: instances
+      failed_when: instances is not defined or instances | length == 0
+
+    - name: Patch all nodes with providerID
+      ansible.builtin.shell: |
+        kubectl patch node {{ item.name }} -p '{"spec": {"providerID": "ibmpowervs://{{ powervs_region }}/{{ powervs_zone }}/{{ powervs_ws }}/{{ item.id }}"}}'
+      loop: "{{ instances }}"
+      loop_control:
+        label: "{{ item.name }}"  
+      when: item.name is defined and item.id is defined 
+      register: node_patch_results
+      changed_when: false 
+      retries: 3 
+      delay: 5
+      until: node_patch_results is success  # Ensure that patching was successful
+
+    - name: Show results from node patching
+      debug:
+        var: node_patch_results.results
+      when: node_patch_results is defined
