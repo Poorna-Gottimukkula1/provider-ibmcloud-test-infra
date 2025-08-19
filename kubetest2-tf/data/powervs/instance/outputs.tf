@@ -3,6 +3,6 @@ output "addresses" {
 }
 
 output "ids" {
-  value       = ibm_pi_instance.pvminstance[*].id
+  value       = ibm_pi_instance.pvminstance[*].instance_id
   description = "PowerVS instance UUIDs"
 }
