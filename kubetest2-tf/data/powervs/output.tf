@@ -24,7 +24,7 @@ output "network" {
 }
 
 output "master_instace_ids" {
-  value       = module.masters.ids
+  value       = module.master.ids
   description = "Instance Id used for csi driver"
 }
 
