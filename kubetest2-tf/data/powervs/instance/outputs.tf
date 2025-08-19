@@ -1,7 +1,8 @@
 output "addresses" {
   value = ibm_pi_instance.pvminstance.*.pi_network
 }
+
 output "ids" {
-  value = ibm_pi_instance.pvminstance[*].pi_instance_id
+  value       = ibm_pi_instance.pvminstance[*].id
   description = "PowerVS instance UUIDs"
 }
