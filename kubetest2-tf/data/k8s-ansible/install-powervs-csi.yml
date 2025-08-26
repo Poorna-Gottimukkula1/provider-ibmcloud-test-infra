@@ -1,0 +1,34 @@
+- name: Prepare nodes with OS/Package updates
+  hosts:
+    - masters
+    - workers
+  roles:
+    - role: update-pkgs
+
+- name: Install Runtime and Kubernetes
+  hosts:
+    - masters
+    - workers
+  roles:
+    - runtime
+    - download-k8s
+    - install-k8s
+
+- name: Install networking - calico
+  hosts: masters
+  roles:
+    - role: install-calico
+      when: cni_provider == "calico"
+
+- name: Install networking - flannel
+  hosts:
+    - masters
+    - workers
+  roles:
+    - role: install-flannel
+      when: cni_provider == "flannel"
+
+- name: patch providerid
+  hosts: masters
+  roles:
+    - role: install-pvs-csi

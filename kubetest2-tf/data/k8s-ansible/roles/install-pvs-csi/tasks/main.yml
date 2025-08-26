@@ -1,0 +1,61 @@
+- name: change systemd cgroup driver to default cgroupfs
+  replace:
+    path: /etc/containerd/config.toml
+    regexp: 'SystemdCgroup = true'
+    replace: 'SystemdCgroup = false'
+
+- name: Restart containerd service
+  systemd:
+    name: containerd
+    state: restarted
+
+- name: Install prereq packages
+  package:
+    name:
+      - git
+      - make
+      - gcc
+    state: present
+  when: ansible_pkg_mgr in ['yum', 'dnf']
+
+- name: Update apt-get repo/cache and install prereq packages
+  apt:
+    force_apt_get: yes
+    update_cache: yes
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+      - git
+      - make
+      - gcc
+  when: ansible_pkg_mgr == 'apt'
+
+- name: Capture the commit ID
+  set_fact:
+    commit: "{{ build_version | regex_search('(?<=\\+)(.*)') }}"
+
+- name: Clone a kubernetes github repo
+  git:
+    repo: https://github.com/kubernetes/kubernetes
+    dest: /kubernetes/
+    version: "{{ commit }}"
+    clone: yes
+    update: yes
+
+- name: Create a shell script
+  copy:
+    content: |
+      #!/bin/bash
+      set -o errexit
+
+      focus=${FOCUS:-"\[NodeConformance\]"}
+      skip=${SKIP-"\[Flaky\]|\[Slow\]|\[Serial\]"}
+      export KUBE_ROOT=/
+      echo 'This is a script to run e2e-node tests'
+      pushd /kubernetes
+        test_args='--kubelet-flags="--runtime-cgroups=/system.slice/containerd.service"'
+        TEST_ARGS=${test_args} make test-e2e-node FOCUS=${focus} SKIP=${skip}
+      popd
+    dest: /make-test-e2e-node.sh
+    mode: '0755'

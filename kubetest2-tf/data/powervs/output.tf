@@ -23,12 +23,13 @@ output "network" {
   description = "Network used for the deployment"
 }
 
-output "master_instace_ids" {
-  value       = module.master.ids
-  description = "Instance Id used for csi driver"
+output "master_instance_list" {
+  value       = module.master.instance_list
+  description = "List of master instance IDs and names"
 }
 
-output "worker_instace_ids" {
-  value       = module.workers.ids
-  description = "Instance Id used for csi driver"
+output "worker_instance_list" {
+  value       = module.workers.instance_list
+  description = "List of worker instance IDs and names"
 }
+
