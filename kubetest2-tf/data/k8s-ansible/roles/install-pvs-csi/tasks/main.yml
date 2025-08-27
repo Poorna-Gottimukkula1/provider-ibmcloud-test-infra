@@ -1,61 +1,33 @@
-- name: change systemd cgroup driver to default cgroupfs
-  replace:
-    path: /etc/containerd/config.toml
-    regexp: 'SystemdCgroup = true'
-    replace: 'SystemdCgroup = false'
-
-- name: Restart containerd service
-  systemd:
-    name: containerd
-    state: restarted
-
-- name: Install prereq packages
-  package:
-    name:
-      - git
-      - make
-      - gcc
-    state: present
-  when: ansible_pkg_mgr in ['yum', 'dnf']
-
-- name: Update apt-get repo/cache and install prereq packages
-  apt:
-    force_apt_get: yes
-    update_cache: yes
-    name: "{{ packages }}"
-    state: present
+---
+- name: Patch Kubernetes nodes with providerID
+  hosts: localhost
+  gather_facts: no
   vars:
-    packages:
-      - git
-      - make
-      - gcc
-  when: ansible_pkg_mgr == 'apt'
+    instance_list_file: "./{{ cluster_name }}/instance_list.json"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
 
-- name: Capture the commit ID
-  set_fact:
-    commit: "{{ build_version | regex_search('(?<=\\+)(.*)') }}"
+  tasks:
+    - name: Load instance list from file
+      ansible.builtin.read_json:
+        path: "{{ instance_list_file }}"
+      register: instances
+      failed_when: instances is not defined or instances | length == 0
 
-- name: Clone a kubernetes github repo
-  git:
-    repo: https://github.com/kubernetes/kubernetes
-    dest: /kubernetes/
-    version: "{{ commit }}"
-    clone: yes
-    update: yes
+    - name: Patch all nodes with providerID
+      ansible.builtin.shell: |
+        kubectl patch node {{ item.name }} -p '{"spec": {"providerID": "ibmpowervs://{{ powervs_region }}/{{ powervs_zone }}/{{ powervs_ws }}/{{ item.id }}"}}'
+      loop: "{{ instances }}"
+      loop_control:
+        label: "{{ item.name }}"  # Makes output clearer
+      when: item.name is defined and item.id is defined  # Ensure both are present
+      register: node_patch_results
+      changed_when: false  # Prevents task from always showing as changed
+      retries: 3  # Retry up to 3 times in case of failure
+      delay: 5  # Add a 5-second delay between retries
+      until: node_patch_results is success  # Ensure that patching was successful
 
-- name: Create a shell script
-  copy:
-    content: |
-      #!/bin/bash
-      set -o errexit
-
-      focus=${FOCUS:-"\[NodeConformance\]"}
-      skip=${SKIP-"\[Flaky\]|\[Slow\]|\[Serial\]"}
-      export KUBE_ROOT=/
-      echo 'This is a script to run e2e-node tests'
-      pushd /kubernetes
-        test_args='--kubelet-flags="--runtime-cgroups=/system.slice/containerd.service"'
-        TEST_ARGS=${test_args} make test-e2e-node FOCUS=${focus} SKIP=${skip}
-      popd
-    dest: /make-test-e2e-node.sh
-    mode: '0755'
+    - name: Show results from node patching
+      debug:
+        var: node_patch_results.results
+      when: node_patch_results is defined
