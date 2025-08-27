@@ -253,6 +253,13 @@ func (d *deployer) Up() error {
 			klog.Errorf("Failed to write instance list data to file: %v", err)
 			return fmt.Errorf("failed to write instance list file: %v", err)
 		}
+		fmt.Println("All Instances:", allInstances)
+		// Print all instances in a readable format (as JSON)
+		fmt.Println("All Instances:", string(instanceListData))
+
+		// Print instance list path using klog
+		klog.Infof("Saved all instances to file: %s", instanceListFile)
+
 	}
 	// --- Generate the Ansible inventory file for masters/workers IPs ---
 	inventory := AnsibleInventory{}
