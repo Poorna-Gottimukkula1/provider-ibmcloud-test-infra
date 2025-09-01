@@ -19,12 +19,12 @@
         kubectl patch node {{ item.name }} -p '{"spec": {"providerID": "ibmpowervs://{{ powervs_region }}/{{ powervs_zone }}/{{ powervs_ws }}/{{ item.id }}"}}'
       loop: "{{ instances }}"
       loop_control:
-        label: "{{ item.name }}"  # Makes output clearer
-      when: item.name is defined and item.id is defined  # Ensure both are present
+        label: "{{ item.name }}"  
+      when: item.name is defined and item.id is defined 
       register: node_patch_results
-      changed_when: false  # Prevents task from always showing as changed
-      retries: 3  # Retry up to 3 times in case of failure
-      delay: 5  # Add a 5-second delay between retries
+      changed_when: false 
+      retries: 3 
+      delay: 5
       until: node_patch_results is success  # Ensure that patching was successful
 
     - name: Show results from node patching

@@ -29,6 +29,6 @@
       when: cni_provider == "flannel"
 
 - name: patch providerid
-  hosts: masters
+  hosts: localhost
   roles:
     - role: install-pvs-csi
