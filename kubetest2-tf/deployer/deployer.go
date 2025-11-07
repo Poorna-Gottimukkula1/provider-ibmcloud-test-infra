@@ -202,73 +202,123 @@ func (d *deployer) Up() error {
 			break
 		}
 	}
-	if d.FetchInstanceData {
-		// --- Fetch instance list from Terraform output ---
-		mastersInstanceListJSON, err := terraform.Output(d.tmpDir, d.TargetProvider, "-json", "master_instance_list")
-		if err != nil {
-			return fmt.Errorf("failed to get masters instance list: %v", err)
-		}
+	// if d.FetchInstanceData {
+	// 	klog.Infof("Fetching instance data from Terraform output...")
 
-		workersInstanceListJSON, err := terraform.Output(d.tmpDir, d.TargetProvider, "-json", "worker_instance_list")
-		if err != nil {
-			return fmt.Errorf("failed to get workers instance list: %v", err)
-		}
+	// 	// Get Terraform output as a map
+	// 	tfOutput, err := terraform.Output(d.tmpDir, d.TargetProvider)
+	// 	if err != nil {
+	// 		return fmt.Errorf("failed to get terraform output: %v", err)
+	// 	}
 
-		// Unmarshal masters instance list into a Go struct
-		var mastersInstances []struct {
-			ID   string `json:"id"`
-			Name string `json:"name"`
-		}
-		if err := json.Unmarshal([]byte(mastersInstanceListJSON), &mastersInstances); err != nil {
-			return fmt.Errorf("failed to unmarshal masters instance list: %v", err)
-		}
+	// 	fmt.Println("--------- terraform output ---------")
+	// 	fmt.Printf("%+v\n", tfOutput)
 
-		// Unmarshal workers instance list into a Go struct
-		var workersInstances []struct {
-			ID   string `json:"id"`
-			Name string `json:"name"`
-		}
-		if err := json.Unmarshal([]byte(workersInstanceListJSON), &workersInstances); err != nil {
-			return fmt.Errorf("failed to unmarshal workers instance list: %v", err)
-		}
+	// 	// Normalize any type into JSON bytes
+	// 	toJSONBytes := func(raw interface{}) []byte {
+	// 		switch v := raw.(type) {
+	// 		case []byte:
+	// 			return v
+	// 		case string:
+	// 			return []byte(v)
+	// 		default:
+	// 			// Handle []uint8 and any other types via reflection or json.Marshal
+	// 			if b, ok := v.([]uint8); ok {
+	// 				return b
+	// 			}
+	// 			b, _ := json.Marshal(v)
+	// 			return b
+	// 		}
+	// 	}
 
-		// Combine all instance details in order (masters + workers)
-		allInstances := append(mastersInstances, workersInstances...)
+	// 	// Extract instances with id + name
+	// 	extractInstances := func(tfOut map[string]interface{}, key string) ([]map[string]string, error) {
+	// 		raw, ok := tfOut[key]
+	// 		if !ok {
+	// 			return nil, fmt.Errorf("%s not found in terraform output", key)
+	// 		}
 
-		// Save combined instance list to file so Ansible can consume it
-		instanceListFile := filepath.Join(d.tmpDir, "instance_list.json")
-		instanceListData, err := json.MarshalIndent(allInstances, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal instance list: %v", err)
-		}
+	// 		rawJSON := toJSONBytes(raw)
 
-		instanceFile, err := os.Create(instanceListFile)
-		if err != nil {
-			klog.Errorf("Error while creating the instance list file: %v", err)
-			return fmt.Errorf("failed to create instance list file: %v", err)
-		}
+	// 		// Try array format first: [ {id, name}, ... ]
+	// 		var directList []map[string]interface{}
+	// 		if err := json.Unmarshal(rawJSON, &directList); err == nil {
+	// 			var instances []map[string]string
+	// 			for _, v := range directList {
+	// 				entry := map[string]string{}
+	// 				if id, ok := v["id"].(string); ok {
+	// 					entry["id"] = id
+	// 				}
+	// 				if name, ok := v["name"].(string); ok {
+	// 					entry["name"] = name
+	// 				}
+	// 				instances = append(instances, entry)
+	// 			}
+	// 			return instances, nil
+	// 		}
 
-		// Write the JSON data to the file
-		if _, err := instanceFile.Write(instanceListData); err != nil {
-			klog.Errorf("Failed to write instance list data to file: %v", err)
-			return fmt.Errorf("failed to write instance list file: %v", err)
-		}
-		fmt.Println("All Instances:", allInstances)
-		// Print all instances in a readable format (as JSON)
-		fmt.Println("All Instances:", string(instanceListData))
+	// 		// Fallback: wrapped format { "value": [...] }
+	// 		var wrapped struct {
+	// 			Value []map[string]interface{} `json:"value"`
+	// 		}
+	// 		if err := json.Unmarshal(rawJSON, &wrapped); err == nil && len(wrapped.Value) > 0 {
+	// 			var instances []map[string]string
+	// 			for _, v := range wrapped.Value {
+	// 				entry := map[string]string{}
+	// 				if id, ok := v["id"].(string); ok {
+	// 					entry["id"] = id
+	// 				}
+	// 				if name, ok := v["name"].(string); ok {
+	// 					entry["name"] = name
+	// 				}
+	// 				instances = append(instances, entry)
+	// 			}
+	// 			return instances, nil
+	// 		}
 
-		// Print instance list path using klog
-		klog.Infof("Saved all instances to file: %s", instanceListFile)
+	// 		return nil, fmt.Errorf("%s format is invalid", key)
+	// 	}
 
-	}
+	// 	// Extract master + worker instance data
+	// 	masters, err := extractInstances(tfOutput, "master_instance_list")
+	// 	if err != nil {
+	// 		return fmt.Errorf("failed to extract masters: %v", err)
+	// 	}
+	// 	workers, err := extractInstances(tfOutput, "worker_instance_list")
+	// 	if err != nil {
+	// 		return fmt.Errorf("failed to extract workers: %v", err)
+	// 	}
+
+	// 	// Combine all instances
+	// 	allInstances := append(masters, workers...)
+
+	// 	// Save to JSON file
+	// 	instanceListFile := filepath.Join(d.tmpDir, "instance_list.json")
+	// 	instanceListData, err := json.MarshalIndent(allInstances, "", "  ")
+	// 	if err != nil {
+	// 		return fmt.Errorf("failed to marshal instance list: %v", err)
+	// 	}
+	// 	if err := os.WriteFile(instanceListFile, instanceListData, 0644); err != nil {
+	// 		return fmt.Errorf("failed to write instance list file: %v", err)
+	// 	}
+
+	// 	klog.Infof("✅ All Instances: %s", string(instanceListData))
+	// }
+
+
+
+
 	// --- Generate the Ansible inventory file for masters/workers IPs ---
 	inventory := AnsibleInventory{}
 	tfMetaOutput, err := terraform.Output(d.tmpDir, d.TargetProvider)
 	if err != nil {
 		return err
 	}
+	fmt.Println("---------tfMetaOutput-L313 terraform output ---------", tfMetaOutput)
 	var tfOutput map[string][]interface{}
+	fmt.Println("---------tfOutput-L318 terraform output ---------", tfOutput)
 	data, err := json.Marshal(tfMetaOutput)
+	fmt.Println("---------data-L320 terraform output marshal ---------", data)
 	if err != nil {
 		return fmt.Errorf("error while marshaling data %v", err)
 	}
@@ -289,12 +339,16 @@ func (d *deployer) Up() error {
 			}
 		}
 		tfOutput = normalized
+		fmt.Println("---------data-vpc L341 block normalize  ---------", tfOutput)
 	} else {
 		if err := json.Unmarshal(data, &tfOutput); err != nil {
 			return fmt.Errorf("error while unmarshaling data %v", err)
 		}
+		fmt.Println("---------data-L318 else block normalize  ---------", tfOutput)
+		fmt.Println("---------data-L320 terraform output-unmarshal ---------", data)
 	}
 	for _, machineType := range []string{"Masters", "Workers"} {
+
 		if machineIps, ok := tfOutput[strings.ToLower(machineType)]; !ok {
 			return fmt.Errorf("error while unmarshaling machine IPs from terraform output")
 		} else {
@@ -304,6 +358,71 @@ func (d *deployer) Up() error {
 			}
 		}
 	}
+	// --- Generate instance list (IDs and Names) from Terraform output ---
+	if d.FetchInstanceData {
+		klog.Info("Fetching instance ID and Name data from Terraform output...")
+
+		allInstances := []map[string]string{}
+
+		for _, key := range []string{"master_instance_list", "worker_instance_list"} {
+			rawVal, ok := tfMetaOutput[key]
+			if !ok {
+				klog.Warningf("%s not found in terraform output", key)
+				continue
+			}
+
+			var list []map[string]interface{}
+
+			switch v := rawVal.(type) {
+			case json.RawMessage:
+				if err := json.Unmarshal(v, &list); err != nil {
+					klog.Warningf("failed to unmarshal %s: %v", key, err)
+					continue
+				}
+			case []byte:
+				if err := json.Unmarshal(v, &list); err != nil {
+					klog.Warningf("failed to unmarshal %s: %v", key, err)
+					continue
+				}
+			case []interface{}:
+				for _, item := range v {
+					if inst, ok := item.(map[string]interface{}); ok {
+						list = append(list, inst)
+					}
+				}
+			default:
+				klog.Warningf("%s is in unexpected format (%T), skipping", key, v)
+				continue
+			}
+
+			for _, inst := range list {
+				id, name := fmt.Sprint(inst["id"]), fmt.Sprint(inst["name"])
+				if id != "" && name != "" {
+					allInstances = append(allInstances, map[string]string{"id": id, "name": name})
+				}
+			}
+		}
+
+		if len(allInstances) == 0 {
+			klog.Warning("No instance data found in Terraform output")
+			return nil
+		}
+
+		data, err := json.MarshalIndent(allInstances, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal instance list: %v", err)
+		}
+
+		file := filepath.Join(d.tmpDir, "instance_list.json")
+		if err := os.WriteFile(file, data, 0644); err != nil {
+			return fmt.Errorf("failed to write instance list: %v", err)
+		}
+
+		klog.Infof("Instance data written to %s", file)
+		klog.Infof("All Instances: %s", string(data))
+	}
+
+
 	klog.Infof("Kubernetes cluster node inventory: %+v", inventory)
 	t := template.New("Ansible inventory file")
 
