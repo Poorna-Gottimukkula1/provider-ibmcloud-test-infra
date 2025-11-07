@@ -203,48 +203,42 @@ func (d *deployer) Up() error {
 		}
 	}
 	if d.FetchInstanceData {
-		// --- Fetch instance list from Terraform output ---
 		tfOutput, err := terraform.Output(d.tmpDir, d.TargetProvider)
 		if err != nil {
 			return fmt.Errorf("failed to get terraform output: %v", err)
 		}
 
-		// Extract instance lists safely from map output
-		mastersInstanceListJSON, ok := tfOutput["master_instance_list"]
-		if !ok {
-			return fmt.Errorf("master_instance_list not found in terraform output")
+		extractInstances := func(key string) ([]map[string]string, error) {
+			raw, ok := tfOutput[key]
+			if !ok {
+				return nil, fmt.Errorf("%s not found in terraform output", key)
+			}
+
+			// Marshal the interface to bytes, so we can access .value
+			rawBytes, err := json.Marshal(raw)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal %s: %v", key, err)
+			}
+
+			// Unwrap Terraform’s structure
+			var wrapped struct {
+				Value []map[string]string `json:"value"`
+			}
+			if err := json.Unmarshal(rawBytes, &wrapped); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal %s value: %v", key, err)
+			}
+
+			return wrapped.Value, nil
 		}
 
-		workersInstanceListJSON, ok := tfOutput["worker_instance_list"]
-		if !ok {
-			return fmt.Errorf("worker_instance_list not found in terraform output")
-		}
-
-		// Marshal back into []byte to unmarshal into Go structs
-		mastersBytes, err := json.Marshal(mastersInstanceListJSON)
+		mastersInstances, err := extractInstances("master_instance_list")
 		if err != nil {
-			return fmt.Errorf("failed to marshal masters instance list: %v", err)
+			return err
 		}
 
-		workersBytes, err := json.Marshal(workersInstanceListJSON)
+		workersInstances, err := extractInstances("worker_instance_list")
 		if err != nil {
-			return fmt.Errorf("failed to marshal workers instance list: %v", err)
-		}
-
-		var mastersInstances []struct {
-			ID   string `json:"id"`
-			Name string `json:"name"`
-		}
-		if err := json.Unmarshal(mastersBytes, &mastersInstances); err != nil {
-			return fmt.Errorf("failed to unmarshal masters instance list: %v", err)
-		}
-
-		var workersInstances []struct {
-			ID   string `json:"id"`
-			Name string `json:"name"`
-		}
-		if err := json.Unmarshal(workersBytes, &workersInstances); err != nil {
-			return fmt.Errorf("failed to unmarshal workers instance list: %v", err)
+			return err
 		}
 
 		allInstances := append(mastersInstances, workersInstances...)
@@ -258,14 +252,11 @@ func (d *deployer) Up() error {
 		if err := os.WriteFile(instanceListFile, instanceListData, 0644); err != nil {
 			return fmt.Errorf("failed to write instance list file: %v", err)
 		}
-		fmt.Println("All Instances:", allInstances)
-		// Print all instances in a readable format (as JSON)
+
 		fmt.Println("All Instances:", string(instanceListData))
-
-		// Print instance list path using klog
 		klog.Infof("Saved all instances to file: %s", instanceListFile)
-
 	}
+
 
 	// --- Generate the Ansible inventory file for masters/workers IPs ---
 	inventory := AnsibleInventory{}
