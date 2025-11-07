@@ -203,34 +203,57 @@ func (d *deployer) Up() error {
 		}
 	}
 	if d.FetchInstanceData {
-		tfOutput, err := terraform.Output(d.tmpDir, d.TargetProvider)
+		klog.Infof("Fetching instance data (master_instance_list / worker_instance_list)...")
+
+		tfMetaOutput, err := terraform.Output(d.tmpDir, d.TargetProvider)
 		if err != nil {
 			return fmt.Errorf("failed to get terraform output: %v", err)
 		}
 
-		extractInstances := func(key string) ([]map[string]string, error) {
-			raw, ok := tfOutput[key]
-			if !ok {
-				return nil, fmt.Errorf("%s not found in terraform output", key)
-			}
-
-			// Marshal the interface to bytes, so we can access .value
-			rawBytes, err := json.Marshal(raw)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal %s: %v", key, err)
-			}
-
-			// Unwrap Terraform’s structure
-			var wrapped struct {
-				Value []map[string]string `json:"value"`
-			}
-			if err := json.Unmarshal(rawBytes, &wrapped); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal %s value: %v", key, err)
-			}
-
-			return wrapped.Value, nil
+		// Convert terraform output to normalized JSON
+		data, err := json.Marshal(tfMetaOutput)
+		if err != nil {
+			return fmt.Errorf("failed to marshal terraform output: %v", err)
 		}
 
+		tmp := make(map[string]interface{})
+		if err := json.Unmarshal(data, &tmp); err != nil {
+			return fmt.Errorf("failed to unmarshal terraform output: %v", err)
+		}
+
+		extractInstances := func(key string) ([]map[string]string, error) {
+			raw, ok := tmp[key]
+			if !ok {
+				klog.Warningf("%s not found in terraform output", key)
+				return []map[string]string{}, nil
+			}
+
+			// Each key in terraform output has .value field containing the list
+			rawMap, ok := raw.(map[string]interface{})
+			if !ok {
+				return nil, fmt.Errorf("%s format is invalid, expected map[string]interface{}", key)
+			}
+
+			value, ok := rawMap["value"]
+			if !ok {
+				return nil, fmt.Errorf("%s missing 'value' field", key)
+			}
+
+			// Marshal/unmarshal cleanly to []map[string]string
+			valueBytes, err := json.Marshal(value)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal %s value: %v", key, err)
+			}
+
+			var instances []map[string]string
+			if err := json.Unmarshal(valueBytes, &instances); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal %s instances: %v", key, err)
+			}
+
+			return instances, nil
+		}
+
+		// Extract both lists consistently
 		mastersInstances, err := extractInstances("master_instance_list")
 		if err != nil {
 			return err
@@ -241,8 +264,10 @@ func (d *deployer) Up() error {
 			return err
 		}
 
+		// Combine master + worker instance lists
 		allInstances := append(mastersInstances, workersInstances...)
 
+		// Save to JSON file
 		instanceListFile := filepath.Join(d.tmpDir, "instance_list.json")
 		instanceListData, err := json.MarshalIndent(allInstances, "", "  ")
 		if err != nil {
@@ -256,6 +281,7 @@ func (d *deployer) Up() error {
 		fmt.Println("All Instances:", string(instanceListData))
 		klog.Infof("Saved all instances to file: %s", instanceListFile)
 	}
+
 
 
 	// --- Generate the Ansible inventory file for masters/workers IPs ---
