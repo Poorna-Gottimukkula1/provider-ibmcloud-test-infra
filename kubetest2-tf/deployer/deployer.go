@@ -348,7 +348,7 @@ func (d *deployer) Up() error {
 		fmt.Println("---------data-L320 terraform output-unmarshal ---------", data)
 	}
 	for _, machineType := range []string{"Masters", "Workers"} {
-		
+
 		if machineIps, ok := tfOutput[strings.ToLower(machineType)]; !ok {
 			return fmt.Errorf("error while unmarshaling machine IPs from terraform output")
 		} else {
@@ -358,6 +358,56 @@ func (d *deployer) Up() error {
 			}
 		}
 	}
+	// --- Generate instance list (IDs and Names) from Terraform output ---
+	if d.FetchInstanceData {
+		klog.Infof("Fetching instance ID and Name data from Terraform output...")
+
+		allInstances := []map[string]string{}
+
+		// We'll use tfMetaOutput (already fetched earlier)
+		for _, listType := range []string{"master_instance_list", "worker_instance_list"} {
+			rawList, ok := tfMetaOutput[listType]
+			if !ok {
+				klog.Warningf("%s not found in terraform output", listType)
+				continue
+			}
+
+			// Each rawList should be []map[string]interface{}
+			switch typed := rawList.(type) {
+			case []interface{}:
+				for _, item := range typed {
+					if instance, ok := item.(map[string]interface{}); ok {
+						id, _ := instance["id"].(string)
+						name, _ := instance["name"].(string)
+						if id != "" && name != "" {
+							allInstances = append(allInstances, map[string]string{
+								"id":   id,
+								"name": name,
+							})
+						}
+					}
+				}
+			default:
+				klog.Warningf("%s is in unexpected format (%T), skipping", listType, typed)
+			}
+		}
+
+		if len(allInstances) == 0 {
+			klog.Warning("No instance data found in Terraform output")
+		} else {
+			instanceListFile := filepath.Join(d.tmpDir, "instance_list.json")
+			instanceListData, err := json.MarshalIndent(allInstances, "", "  ")
+			if err != nil {
+				return fmt.Errorf("failed to marshal instance list: %v", err)
+			}
+			if err := os.WriteFile(instanceListFile, instanceListData, 0644); err != nil {
+				return fmt.Errorf("failed to write instance list file: %v", err)
+			}
+			klog.Infof("Instance data written to %s", instanceListFile)
+			klog.Infof("All Instances: %s", string(instanceListData))
+		}
+	}
+
 	klog.Infof("Kubernetes cluster node inventory: %+v", inventory)
 	t := template.New("Ansible inventory file")
 
