@@ -367,22 +367,26 @@ func (d *deployer) Up() error {
 		for _, key := range []string{"master_instance_list", "worker_instance_list"} {
 			rawVal, ok := tfMetaOutput[key]
 			if !ok {
-				klog.Warningf("%s not found in terraform output", key)
+				klog.Warningf("%s not found in Terraform output", key)
 				continue
 			}
 
-			list, ok := rawVal.([]interface{})
+			data, ok := rawVal.(json.RawMessage)
 			if !ok {
-				klog.Warningf("%s is in unexpected format (%T)", key, rawVal)
+				klog.Warningf("%s is not json.RawMessage (type: %T), skipping", key, rawVal)
 				continue
 			}
 
-			for _, item := range list {
-				if inst, ok := item.(map[string]interface{}); ok {
-					id, name := fmt.Sprint(inst["id"]), fmt.Sprint(inst["name"])
-					if id != "" && name != "" {
-						allInstances = append(allInstances, map[string]string{"id": id, "name": name})
-					}
+			var list []map[string]interface{}
+			if err := json.Unmarshal(data, &list); err != nil {
+				klog.Warningf("failed to unmarshal %s: %v", key, err)
+				continue
+			}
+
+			for _, inst := range list {
+				id, name := fmt.Sprint(inst["id"]), fmt.Sprint(inst["name"])
+				if id != "" && name != "" {
+					allInstances = append(allInstances, map[string]string{"id": id, "name": name})
 				}
 			}
 		}
@@ -404,6 +408,8 @@ func (d *deployer) Up() error {
 		klog.Infof("Instance data written to %s", file)
 		klog.Infof("All Instances: %s", string(data))
 	}
+
+
 
 
 
