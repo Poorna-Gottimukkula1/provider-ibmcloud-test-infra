@@ -210,6 +210,7 @@ func (d *deployer) Up() error {
 		if err != nil {
 			return fmt.Errorf("failed to get terraform output: %v", err)
 		}
+		fmt.Println("---------1-terraform output---:", tfOutput)
 
 		// Helper function to extract instances
 		extractInstances := func(tfOut map[string]interface{}, key string) ([]map[string]string, error) {
