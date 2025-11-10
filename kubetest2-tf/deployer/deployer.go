@@ -316,9 +316,9 @@ func (d *deployer) Up() error {
 	}
 	fmt.Println("---------tfMetaOutput-L313 terraform output ---------", tfMetaOutput)
 	var tfOutput map[string][]interface{}
-	fmt.Println("---------tfOutput-L319 terraform output ---------", tfOutput)
+	fmt.Println("---------tfOutput-L318 terraform output ---------", tfOutput)
 	data, err := json.Marshal(tfMetaOutput)
-	fmt.Println("---------data-L321 terraform output marshal ---------", data)
+	fmt.Println("---------data-L320 terraform output marshal ---------", data)
 	if err != nil {
 		return fmt.Errorf("error while marshaling data %v", err)
 	}
@@ -339,16 +339,16 @@ func (d *deployer) Up() error {
 			}
 		}
 		tfOutput = normalized
-		fmt.Println("---------data-vpc block normalize  ---------", tfOutput)
+		fmt.Println("---------data-vpc L341 block normalize  ---------", tfOutput)
 	} else {
 		if err := json.Unmarshal(data, &tfOutput); err != nil {
 			return fmt.Errorf("error while unmarshaling data %v", err)
 		}
-		fmt.Println("---------data-L344 else block normalize  ---------", data)
-		fmt.Println("---------data-L344 else block normalize  ---------", tfOutput)
-		fmt.Println("---------data-L321 terraform output-unmarshal ---------", data)
+		fmt.Println("---------data-L318 else block normalize  ---------", tfOutput)
+		fmt.Println("---------data-L320 terraform output-unmarshal ---------", data)
 	}
 	for _, machineType := range []string{"Masters", "Workers"} {
+		
 		if machineIps, ok := tfOutput[strings.ToLower(machineType)]; !ok {
 			return fmt.Errorf("error while unmarshaling machine IPs from terraform output")
 		} else {
