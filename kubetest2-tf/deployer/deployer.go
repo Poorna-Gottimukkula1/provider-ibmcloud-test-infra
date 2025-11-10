@@ -203,46 +203,63 @@ func (d *deployer) Up() error {
 		}
 	}
 	if d.FetchInstanceData {
+		klog.Infof("Fetching instance data from Terraform output...")
+
+		// --- Get Terraform output ---
 		tfOutput, err := terraform.Output(d.tmpDir, d.TargetProvider)
 		if err != nil {
 			return fmt.Errorf("failed to get terraform output: %v", err)
 		}
 
-		extractInstances := func(key string) ([]map[string]string, error) {
-			raw, ok := tfOutput[key]
+		// Helper function to safely extract and normalize instance list
+		extractInstances := func(tfOut map[string]interface{}, key string) ([]map[string]interface{}, error) {
+			raw, ok := tfOut[key]
 			if !ok {
 				return nil, fmt.Errorf("%s not found in terraform output", key)
 			}
 
-			// Marshal the interface to bytes, so we can access .value
 			rawBytes, err := json.Marshal(raw)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal %s: %v", key, err)
 			}
 
-			// Unwrap Terraform’s structure
 			var wrapped struct {
-				Value []map[string]string `json:"value"`
+				Value []map[string]interface{} `json:"value"`
 			}
-			if err := json.Unmarshal(rawBytes, &wrapped); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal %s value: %v", key, err)
+			if err := json.Unmarshal(rawBytes, &wrapped); err == nil && len(wrapped.Value) > 0 {
+				return wrapped.Value, nil
 			}
 
-			return wrapped.Value, nil
+			var list []map[string]interface{}
+			if err := json.Unmarshal(rawBytes, &list); err == nil && len(list) > 0 {
+				return list, nil
+			}
+
+			var indexed map[string]map[string]interface{}
+			if err := json.Unmarshal(rawBytes, &indexed); err == nil && len(indexed) > 0 {
+				res := make([]map[string]interface{}, 0, len(indexed))
+				for _, v := range indexed {
+					res = append(res, v)
+				}
+				return res, nil
+			}
+
+			return nil, fmt.Errorf("%s format is invalid, expected map[string]interface{} or list", key)
 		}
 
-		mastersInstances, err := extractInstances("master_instance_list")
+		// --- Extract masters and workers safely ---
+		mastersInstances, err := extractInstances(tfOutput, "master_instance_list")
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to extract masters: %v", err)
 		}
-
-		workersInstances, err := extractInstances("worker_instance_list")
+		workersInstances, err := extractInstances(tfOutput, "worker_instance_list")
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to extract workers: %v", err)
 		}
 
 		allInstances := append(mastersInstances, workersInstances...)
 
+		// --- Save instance data ---
 		instanceListFile := filepath.Join(d.tmpDir, "instance_list.json")
 		instanceListData, err := json.MarshalIndent(allInstances, "", "  ")
 		if err != nil {
@@ -253,10 +270,9 @@ func (d *deployer) Up() error {
 			return fmt.Errorf("failed to write instance list file: %v", err)
 		}
 
-		fmt.Println("All Instances:", string(instanceListData))
 		klog.Infof("Saved all instances to file: %s", instanceListFile)
+		klog.V(2).Infof("Instance data:\n%s", string(instanceListData))
 	}
-
 
 	// --- Generate the Ansible inventory file for masters/workers IPs ---
 	inventory := AnsibleInventory{}
