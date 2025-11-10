@@ -360,53 +360,68 @@ func (d *deployer) Up() error {
 	}
 	// --- Generate instance list (IDs and Names) from Terraform output ---
 	if d.FetchInstanceData {
-		klog.Infof("Fetching instance ID and Name data from Terraform output...")
+		klog.Info("Fetching instance ID and Name data from Terraform output...")
 
 		allInstances := []map[string]string{}
 
-		// We'll use tfMetaOutput (already fetched earlier)
-		for _, listType := range []string{"master_instance_list", "worker_instance_list"} {
-			rawList, ok := tfMetaOutput[listType]
+		for _, key := range []string{"master_instance_list", "worker_instance_list"} {
+			rawVal, ok := tfMetaOutput[key]
 			if !ok {
-				klog.Warningf("%s not found in terraform output", listType)
+				klog.Warningf("%s not found in terraform output", key)
 				continue
 			}
 
-			// Each rawList should be []map[string]interface{}
-			switch typed := rawList.(type) {
+			var list []map[string]interface{}
+
+			switch v := rawVal.(type) {
+			case json.RawMessage:
+				if err := json.Unmarshal(v, &list); err != nil {
+					klog.Warningf("failed to unmarshal %s: %v", key, err)
+					continue
+				}
+			case []byte:
+				if err := json.Unmarshal(v, &list); err != nil {
+					klog.Warningf("failed to unmarshal %s: %v", key, err)
+					continue
+				}
 			case []interface{}:
-				for _, item := range typed {
-					if instance, ok := item.(map[string]interface{}); ok {
-						id, _ := instance["id"].(string)
-						name, _ := instance["name"].(string)
-						if id != "" && name != "" {
-							allInstances = append(allInstances, map[string]string{
-								"id":   id,
-								"name": name,
-							})
-						}
+				for _, item := range v {
+					if inst, ok := item.(map[string]interface{}); ok {
+						list = append(list, inst)
 					}
 				}
 			default:
-				klog.Warningf("%s is in unexpected format (%T), skipping", listType, typed)
+				klog.Warningf("%s is in unexpected format (%T), skipping", key, v)
+				continue
+			}
+
+			for _, inst := range list {
+				id, name := fmt.Sprint(inst["id"]), fmt.Sprint(inst["name"])
+				if id != "" && name != "" {
+					allInstances = append(allInstances, map[string]string{"id": id, "name": name})
+				}
 			}
 		}
 
 		if len(allInstances) == 0 {
 			klog.Warning("No instance data found in Terraform output")
-		} else {
-			instanceListFile := filepath.Join(d.tmpDir, "instance_list.json")
-			instanceListData, err := json.MarshalIndent(allInstances, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal instance list: %v", err)
-			}
-			if err := os.WriteFile(instanceListFile, instanceListData, 0644); err != nil {
-				return fmt.Errorf("failed to write instance list file: %v", err)
-			}
-			klog.Infof("Instance data written to %s", instanceListFile)
-			klog.Infof("All Instances: %s", string(instanceListData))
+			return nil
 		}
+
+		data, err := json.MarshalIndent(allInstances, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal instance list: %v", err)
+		}
+
+		file := filepath.Join(d.tmpDir, "instance_list.json")
+		if err := os.WriteFile(file, data, 0644); err != nil {
+			return fmt.Errorf("failed to write instance list: %v", err)
+		}
+
+		klog.Infof("Instance data written to %s", file)
+		klog.Infof("All Instances: %s", string(data))
 	}
+
 
 	klog.Infof("Kubernetes cluster node inventory: %+v", inventory)
 	t := template.New("Ansible inventory file")
