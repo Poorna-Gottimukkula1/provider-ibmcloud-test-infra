@@ -210,67 +210,101 @@ func (d *deployer) Up() error {
 		if err != nil {
 			return fmt.Errorf("failed to get terraform output: %v", err)
 		}
-		fmt.Println("---------1-terraform output---:", tfOutput)
 
-		// Helper function to extract instances
+		fmt.Println("--------- terraform output ---------")
+		fmt.Printf("%+v\n", tfOutput)
+
+		// Utility: normalize any raw bytes / strings into JSON bytes
+		toJSONBytes := func(raw interface{}) []byte {
+			switch v := raw.(type) {
+			case []byte:
+				return v
+			case string:
+				return []byte(v)
+			case []uint8:
+				return []byte(v)
+			default:
+				b, _ := json.Marshal(v)
+				return b
+			}
+		}
+
+		// Extracts instances (id + name) from terraform output
 		extractInstances := func(tfOut map[string]interface{}, key string) ([]map[string]string, error) {
 			raw, ok := tfOut[key]
 			if !ok {
 				return nil, fmt.Errorf("%s not found in terraform output", key)
 			}
 
-			rawBytes, err := json.Marshal(raw)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal %s: %v", key, err)
+			rawJSON := toJSONBytes(raw)
+
+			// First, try direct array format: [ {id, name}, ... ]
+			var directList []map[string]interface{}
+			if err := json.Unmarshal(rawJSON, &directList); err == nil {
+				result := []map[string]string{}
+				for _, v := range directList {
+					entry := map[string]string{}
+					if id, ok := v["id"].(string); ok {
+						entry["id"] = id
+					}
+					if name, ok := v["name"].(string); ok {
+						entry["name"] = name
+					}
+					result = append(result, entry)
+				}
+				return result, nil
 			}
 
+			// Fallback: wrapped in { "value": [...] }
 			var wrapped struct {
 				Value []map[string]interface{} `json:"value"`
 			}
-			if err := json.Unmarshal(rawBytes, &wrapped); err != nil {
-				return nil, fmt.Errorf("%s format is invalid: %v", key, err)
+			if err := json.Unmarshal(rawJSON, &wrapped); err == nil && len(wrapped.Value) > 0 {
+				result := []map[string]string{}
+				for _, v := range wrapped.Value {
+					entry := map[string]string{}
+					if id, ok := v["id"].(string); ok {
+						entry["id"] = id
+					}
+					if name, ok := v["name"].(string); ok {
+						entry["name"] = name
+					}
+					result = append(result, entry)
+				}
+				return result, nil
 			}
 
-			var instances []map[string]string
-			for _, v := range wrapped.Value {
-				inst := map[string]string{}
-				if id, ok := v["id"].(string); ok {
-					inst["id"] = id
-				}
-				if name, ok := v["name"].(string); ok {
-					inst["name"] = name
-				}
-				instances = append(instances, inst)
-			}
-			return instances, nil
+			// Otherwise fail
+			return nil, fmt.Errorf("%s format is invalid", key)
 		}
 
-		// Extract masters and workers
+		// Extract master and worker instance data
 		masters, err := extractInstances(tfOutput, "master_instance_list")
 		if err != nil {
 			return fmt.Errorf("failed to extract masters: %v", err)
 		}
+
 		workers, err := extractInstances(tfOutput, "worker_instance_list")
 		if err != nil {
 			return fmt.Errorf("failed to extract workers: %v", err)
 		}
 
-		// Combine all instances
+		// Combine all instances together
 		allInstances := append(masters, workers...)
 
-		// Save to JSON file
+		// Write to JSON file
 		instanceListFile := filepath.Join(d.tmpDir, "instance_list.json")
 		instanceListData, err := json.MarshalIndent(allInstances, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal instance list: %v", err)
 		}
-
 		if err := os.WriteFile(instanceListFile, instanceListData, 0644); err != nil {
 			return fmt.Errorf("failed to write instance list file: %v", err)
 		}
 
 		klog.Infof("All Instances: %s", string(instanceListData))
 	}
+
 
 
 	// --- Generate the Ansible inventory file for masters/workers IPs ---
