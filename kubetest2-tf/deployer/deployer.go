@@ -314,8 +314,7 @@ func (d *deployer) Up() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("---------tfMetaOutput-L313 terraform output ---------", tfOutput)
-	fmt.Printf("%+v\n", tfOutput)
+	fmt.Println("---------tfMetaOutput-L313 terraform output ---------", tfMetaOutput)
 	var tfOutput map[string][]interface{}
 	fmt.Println("---------tfOutput-L319 terraform output ---------", tfOutput)
 	data, err := json.Marshal(tfMetaOutput)
