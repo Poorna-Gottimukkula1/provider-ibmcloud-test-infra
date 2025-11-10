@@ -375,16 +375,19 @@ func (d *deployer) Up() error {
 
 			switch v := rawVal.(type) {
 			case json.RawMessage:
+				klog.Warning("1 rawVal -json.RawMessage ")
 				if err := json.Unmarshal(v, &list); err != nil {
 					klog.Warningf("failed to unmarshal %s: %v", key, err)
 					continue
 				}
 			case []byte:
+				klog.Warning("2 rawVal -[]byte ")
 				if err := json.Unmarshal(v, &list); err != nil {
 					klog.Warningf("failed to unmarshal %s: %v", key, err)
 					continue
 				}
 			case []interface{}:
+				klog.Warning("3 rawVal -[]interface{}")
 				for _, item := range v {
 					if inst, ok := item.(map[string]interface{}); ok {
 						list = append(list, inst)
