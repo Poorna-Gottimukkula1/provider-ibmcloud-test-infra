@@ -205,16 +205,19 @@ func (d *deployer) Up() error {
 	if d.FetchInstanceData {
 		klog.Infof("Fetching instance data from Terraform output...")
 
+		// Get Terraform output as a map
 		tfOutput, err := terraform.Output(d.tmpDir, d.TargetProvider)
 		if err != nil {
 			return fmt.Errorf("failed to get terraform output: %v", err)
 		}
 
+		// Helper function to extract instances
 		extractInstances := func(tfOut map[string]interface{}, key string) ([]map[string]string, error) {
 			raw, ok := tfOut[key]
 			if !ok {
 				return nil, fmt.Errorf("%s not found in terraform output", key)
 			}
+
 			rawBytes, err := json.Marshal(raw)
 			if err != nil {
 				return nil, fmt.Errorf("failed to marshal %s: %v", key, err)
@@ -223,24 +226,25 @@ func (d *deployer) Up() error {
 			var wrapped struct {
 				Value []map[string]interface{} `json:"value"`
 			}
-			if err := json.Unmarshal(rawBytes, &wrapped); err == nil && len(wrapped.Value) > 0 {
-				var instances []map[string]string
-				for _, v := range wrapped.Value {
-					inst := map[string]string{}
-					if id, ok := v["id"].(string); ok {
-						inst["id"] = id
-					}
-					if name, ok := v["name"].(string); ok {
-						inst["name"] = name
-					}
-					instances = append(instances, inst)
-				}
-				return instances, nil
+			if err := json.Unmarshal(rawBytes, &wrapped); err != nil {
+				return nil, fmt.Errorf("%s format is invalid: %v", key, err)
 			}
 
-			return nil, fmt.Errorf("%s format is invalid", key)
+			var instances []map[string]string
+			for _, v := range wrapped.Value {
+				inst := map[string]string{}
+				if id, ok := v["id"].(string); ok {
+					inst["id"] = id
+				}
+				if name, ok := v["name"].(string); ok {
+					inst["name"] = name
+				}
+				instances = append(instances, inst)
+			}
+			return instances, nil
 		}
 
+		// Extract masters and workers
 		masters, err := extractInstances(tfOutput, "master_instance_list")
 		if err != nil {
 			return fmt.Errorf("failed to extract masters: %v", err)
@@ -250,6 +254,7 @@ func (d *deployer) Up() error {
 			return fmt.Errorf("failed to extract workers: %v", err)
 		}
 
+		// Combine all instances
 		allInstances := append(masters, workers...)
 
 		// Save to JSON file
@@ -265,6 +270,7 @@ func (d *deployer) Up() error {
 
 		klog.Infof("All Instances: %s", string(instanceListData))
 	}
+
 
 	// --- Generate the Ansible inventory file for masters/workers IPs ---
 	inventory := AnsibleInventory{}
