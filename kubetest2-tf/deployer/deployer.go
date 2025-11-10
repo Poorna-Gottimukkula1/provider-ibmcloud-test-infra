@@ -210,36 +210,43 @@ func (d *deployer) Up() error {
 			return fmt.Errorf("failed to get terraform output: %v", err)
 		}
 
-		extractInstances := func(tfOut map[string]interface{}, key string) ([]map[string]string, error) {
+		extractInstances(tfOut map[string]interface{}, key string) ([]map[string]interface{}, error) {
 			raw, ok := tfOut[key]
 			if !ok {
 				return nil, fmt.Errorf("%s not found in terraform output", key)
 			}
-			rawBytes, err := json.Marshal(raw)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal %s: %v", key, err)
+
+			// Try type assertion to map[string]interface{} first (for "value" wrapper)
+			if wrapped, ok := raw.(map[string]interface{}); ok {
+				if v, exists := wrapped["value"]; exists {
+					if list, ok := v.([]interface{}); ok {
+						var instances []map[string]interface{}
+						for _, item := range list {
+							if m, ok := item.(map[string]interface{}); ok {
+								instances = append(instances, m)
+							}
+						}
+						return instances, nil
+					}
+				}
 			}
 
-			var wrapped struct {
-				Value []map[string]interface{} `json:"value"`
-			}
-			if err := json.Unmarshal(rawBytes, &wrapped); err == nil && len(wrapped.Value) > 0 {
-				var instances []map[string]string
-				for _, v := range wrapped.Value {
-					inst := map[string]string{}
-					if id, ok := v["id"].(string); ok {
-						inst["id"] = id
+			// Try as []interface{} directly
+			if list, ok := raw.([]interface{}); ok {
+				var instances []map[string]interface{}
+				for _, item := range list {
+					if m, ok := item.(map[string]interface{}); ok {
+						instances = append(instances, m)
+					} else {
+						return nil, fmt.Errorf("%s element is not a map[string]interface{}", key)
 					}
-					if name, ok := v["name"].(string); ok {
-						inst["name"] = name
-					}
-					instances = append(instances, inst)
 				}
 				return instances, nil
 			}
 
-			return nil, fmt.Errorf("%s format is invalid", key)
+			return nil, fmt.Errorf("%s format is invalid, expected map[string]interface{} or list", key)
 		}
+
 
 		masters, err := extractInstances(tfOutput, "master_instance_list")
 		if err != nil {
