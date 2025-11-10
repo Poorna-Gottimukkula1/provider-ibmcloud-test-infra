@@ -371,34 +371,18 @@ func (d *deployer) Up() error {
 				continue
 			}
 
-			var list []map[string]interface{}
-
-			switch v := rawVal.(type) {
-			case json.RawMessage:
-				if err := json.Unmarshal(v, &list); err != nil {
-					klog.Warningf("failed to unmarshal %s: %v", key, err)
-					continue
-				}
-			case []byte:
-				if err := json.Unmarshal(v, &list); err != nil {
-					klog.Warningf("failed to unmarshal %s: %v", key, err)
-					continue
-				}
-			case []interface{}:
-				for _, item := range v {
-					if inst, ok := item.(map[string]interface{}); ok {
-						list = append(list, inst)
-					}
-				}
-			default:
-				klog.Warningf("%s is in unexpected format (%T), skipping", key, v)
+			list, ok := rawVal.([]interface{})
+			if !ok {
+				klog.Warningf("%s is in unexpected format (%T)", key, rawVal)
 				continue
 			}
 
-			for _, inst := range list {
-				id, name := fmt.Sprint(inst["id"]), fmt.Sprint(inst["name"])
-				if id != "" && name != "" {
-					allInstances = append(allInstances, map[string]string{"id": id, "name": name})
+			for _, item := range list {
+				if inst, ok := item.(map[string]interface{}); ok {
+					id, name := fmt.Sprint(inst["id"]), fmt.Sprint(inst["name"])
+					if id != "" && name != "" {
+						allInstances = append(allInstances, map[string]string{"id": id, "name": name})
+					}
 				}
 			}
 		}
@@ -408,12 +392,11 @@ func (d *deployer) Up() error {
 			return nil
 		}
 
+		file := filepath.Join(d.tmpDir, "instance_list.json")
 		data, err := json.MarshalIndent(allInstances, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal instance list: %v", err)
 		}
-
-		file := filepath.Join(d.tmpDir, "instance_list.json")
 		if err := os.WriteFile(file, data, 0644); err != nil {
 			return fmt.Errorf("failed to write instance list: %v", err)
 		}
@@ -421,6 +404,7 @@ func (d *deployer) Up() error {
 		klog.Infof("Instance data written to %s", file)
 		klog.Infof("All Instances: %s", string(data))
 	}
+
 
 
 	klog.Infof("Kubernetes cluster node inventory: %+v", inventory)
