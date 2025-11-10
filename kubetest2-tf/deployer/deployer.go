@@ -202,108 +202,109 @@ func (d *deployer) Up() error {
 			break
 		}
 	}
-	if d.FetchInstanceData {
-		klog.Infof("Fetching instance data from Terraform output...")
+	// if d.FetchInstanceData {
+	// 	klog.Infof("Fetching instance data from Terraform output...")
 
-		// Get Terraform output as a map
-		tfOutput, err := terraform.Output(d.tmpDir, d.TargetProvider)
-		if err != nil {
-			return fmt.Errorf("failed to get terraform output: %v", err)
-		}
+	// 	// Get Terraform output as a map
+	// 	tfOutput, err := terraform.Output(d.tmpDir, d.TargetProvider)
+	// 	if err != nil {
+	// 		return fmt.Errorf("failed to get terraform output: %v", err)
+	// 	}
 
-		fmt.Println("--------- terraform output ---------")
-		fmt.Printf("%+v\n", tfOutput)
+	// 	fmt.Println("--------- terraform output ---------")
+	// 	fmt.Printf("%+v\n", tfOutput)
 
-		// Utility: normalize any raw bytes / strings into JSON bytes
-		toJSONBytes := func(raw interface{}) []byte {
-			switch v := raw.(type) {
-			case []byte:
-				return v
-			case string:
-				return []byte(v)
-			case []uint8:
-				return []byte(v)
-			default:
-				b, _ := json.Marshal(v)
-				return b
-			}
-		}
+	// 	// Normalize any type into JSON bytes
+	// 	toJSONBytes := func(raw interface{}) []byte {
+	// 		switch v := raw.(type) {
+	// 		case []byte:
+	// 			return v
+	// 		case string:
+	// 			return []byte(v)
+	// 		default:
+	// 			// Handle []uint8 and any other types via reflection or json.Marshal
+	// 			if b, ok := v.([]uint8); ok {
+	// 				return b
+	// 			}
+	// 			b, _ := json.Marshal(v)
+	// 			return b
+	// 		}
+	// 	}
 
-		// Extracts instances (id + name) from terraform output
-		extractInstances := func(tfOut map[string]interface{}, key string) ([]map[string]string, error) {
-			raw, ok := tfOut[key]
-			if !ok {
-				return nil, fmt.Errorf("%s not found in terraform output", key)
-			}
+	// 	// Extract instances with id + name
+	// 	extractInstances := func(tfOut map[string]interface{}, key string) ([]map[string]string, error) {
+	// 		raw, ok := tfOut[key]
+	// 		if !ok {
+	// 			return nil, fmt.Errorf("%s not found in terraform output", key)
+	// 		}
 
-			rawJSON := toJSONBytes(raw)
+	// 		rawJSON := toJSONBytes(raw)
 
-			// First, try direct array format: [ {id, name}, ... ]
-			var directList []map[string]interface{}
-			if err := json.Unmarshal(rawJSON, &directList); err == nil {
-				result := []map[string]string{}
-				for _, v := range directList {
-					entry := map[string]string{}
-					if id, ok := v["id"].(string); ok {
-						entry["id"] = id
-					}
-					if name, ok := v["name"].(string); ok {
-						entry["name"] = name
-					}
-					result = append(result, entry)
-				}
-				return result, nil
-			}
+	// 		// Try array format first: [ {id, name}, ... ]
+	// 		var directList []map[string]interface{}
+	// 		if err := json.Unmarshal(rawJSON, &directList); err == nil {
+	// 			var instances []map[string]string
+	// 			for _, v := range directList {
+	// 				entry := map[string]string{}
+	// 				if id, ok := v["id"].(string); ok {
+	// 					entry["id"] = id
+	// 				}
+	// 				if name, ok := v["name"].(string); ok {
+	// 					entry["name"] = name
+	// 				}
+	// 				instances = append(instances, entry)
+	// 			}
+	// 			return instances, nil
+	// 		}
 
-			// Fallback: wrapped in { "value": [...] }
-			var wrapped struct {
-				Value []map[string]interface{} `json:"value"`
-			}
-			if err := json.Unmarshal(rawJSON, &wrapped); err == nil && len(wrapped.Value) > 0 {
-				result := []map[string]string{}
-				for _, v := range wrapped.Value {
-					entry := map[string]string{}
-					if id, ok := v["id"].(string); ok {
-						entry["id"] = id
-					}
-					if name, ok := v["name"].(string); ok {
-						entry["name"] = name
-					}
-					result = append(result, entry)
-				}
-				return result, nil
-			}
+	// 		// Fallback: wrapped format { "value": [...] }
+	// 		var wrapped struct {
+	// 			Value []map[string]interface{} `json:"value"`
+	// 		}
+	// 		if err := json.Unmarshal(rawJSON, &wrapped); err == nil && len(wrapped.Value) > 0 {
+	// 			var instances []map[string]string
+	// 			for _, v := range wrapped.Value {
+	// 				entry := map[string]string{}
+	// 				if id, ok := v["id"].(string); ok {
+	// 					entry["id"] = id
+	// 				}
+	// 				if name, ok := v["name"].(string); ok {
+	// 					entry["name"] = name
+	// 				}
+	// 				instances = append(instances, entry)
+	// 			}
+	// 			return instances, nil
+	// 		}
 
-			// Otherwise fail
-			return nil, fmt.Errorf("%s format is invalid", key)
-		}
+	// 		return nil, fmt.Errorf("%s format is invalid", key)
+	// 	}
 
-		// Extract master and worker instance data
-		masters, err := extractInstances(tfOutput, "master_instance_list")
-		if err != nil {
-			return fmt.Errorf("failed to extract masters: %v", err)
-		}
+	// 	// Extract master + worker instance data
+	// 	masters, err := extractInstances(tfOutput, "master_instance_list")
+	// 	if err != nil {
+	// 		return fmt.Errorf("failed to extract masters: %v", err)
+	// 	}
+	// 	workers, err := extractInstances(tfOutput, "worker_instance_list")
+	// 	if err != nil {
+	// 		return fmt.Errorf("failed to extract workers: %v", err)
+	// 	}
 
-		workers, err := extractInstances(tfOutput, "worker_instance_list")
-		if err != nil {
-			return fmt.Errorf("failed to extract workers: %v", err)
-		}
+	// 	// Combine all instances
+	// 	allInstances := append(masters, workers...)
 
-		// Combine all instances together
-		allInstances := append(masters, workers...)
+	// 	// Save to JSON file
+	// 	instanceListFile := filepath.Join(d.tmpDir, "instance_list.json")
+	// 	instanceListData, err := json.MarshalIndent(allInstances, "", "  ")
+	// 	if err != nil {
+	// 		return fmt.Errorf("failed to marshal instance list: %v", err)
+	// 	}
+	// 	if err := os.WriteFile(instanceListFile, instanceListData, 0644); err != nil {
+	// 		return fmt.Errorf("failed to write instance list file: %v", err)
+	// 	}
 
-		// Write to JSON file
-		instanceListFile := filepath.Join(d.tmpDir, "instance_list.json")
-		instanceListData, err := json.MarshalIndent(allInstances, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal instance list: %v", err)
-		}
-		if err := os.WriteFile(instanceListFile, instanceListData, 0644); err != nil {
-			return fmt.Errorf("failed to write instance list file: %v", err)
-		}
+	// 	klog.Infof("✅ All Instances: %s", string(instanceListData))
+	// }
 
-		klog.Infof("All Instances: %s", string(instanceListData))
-	}
 
 
 
@@ -313,8 +314,12 @@ func (d *deployer) Up() error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("---------tfMetaOutput-L313 terraform output ---------", tfOutput)
+	fmt.Printf("%+v\n", tfOutput)
 	var tfOutput map[string][]interface{}
+	fmt.Println("---------tfOutput-L319 terraform output ---------", tfOutput)
 	data, err := json.Marshal(tfMetaOutput)
+	fmt.Println("---------data-L321 terraform output marshal ---------", data)
 	if err != nil {
 		return fmt.Errorf("error while marshaling data %v", err)
 	}
@@ -335,10 +340,14 @@ func (d *deployer) Up() error {
 			}
 		}
 		tfOutput = normalized
+		fmt.Println("---------data-vpc block normalize  ---------", tfOutput)
 	} else {
 		if err := json.Unmarshal(data, &tfOutput); err != nil {
 			return fmt.Errorf("error while unmarshaling data %v", err)
 		}
+		fmt.Println("---------data-L344 else block normalize  ---------", data)
+		fmt.Println("---------data-L344 else block normalize  ---------", tfOutput)
+		fmt.Println("---------data-L321 terraform output-unmarshal ---------", data)
 	}
 	for _, machineType := range []string{"Masters", "Workers"} {
 		if machineIps, ok := tfOutput[strings.ToLower(machineType)]; !ok {
