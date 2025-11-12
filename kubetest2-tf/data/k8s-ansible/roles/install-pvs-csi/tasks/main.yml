@@ -1,31 +1,25 @@
 ---
-- name: Patch Kubernetes nodes with providerID
-  hosts: localhost
+- name: Install CSI Driver and Run E2e
   gather_facts: no
-  vars:
-    instance_list_file: "./{{ cluster_name }}/instance_list.json"
   environment:
     KUBECONFIG: "{{ kubeconfig_path }}"
-
   tasks:
-    - name: Load instance list from file
-      ansible.builtin.read_json:
-        path: "{{ instance_list_file }}"
-      register: instances
-      failed_when: instances is not defined or instances | length == 0
+	- name: Load instance list from file
+	  set_fact:
+		instances: "{{ lookup('file', './' + cluster_name + '/instance_list.json') | from_json }}"
+	  failed_when: instances is not defined or instances | length == 0
 
-    - name: Patch all nodes with providerID
-      ansible.builtin.shell: |
-        kubectl patch node {{ item.name }} -p '{"spec": {"providerID": "ibmpowervs://{{ powervs_region }}/{{ powervs_zone }}/{{ powervs_ws }}/{{ item.id }}"}}'
-      loop: "{{ instances }}"
-      loop_control:
-        label: "{{ item.name }}"  
-      when: item.name is defined and item.id is defined 
-      register: node_patch_results
-      changed_when: false 
-      retries: 3 
-      delay: 5
-      until: node_patch_results is success  # Ensure that patching was successful
+	- name: Patch all nodes with providerID
+	  ansible.builtin.shell: |
+		kubectl patch node {{ item.name }} -p '{"spec": {"providerID": "ibmpowervs://{{ powervs_region }}/{{ powervs_zone }}/{{ powervs_ws }}/{{ item.id }}"}}'
+	  loop: "{{ instances }}"
+	  loop_control:
+		label: "{{ item.name }}"
+	  when: item.name is defined and item.id is defined
+	  register: node_patch_results
+	  retries: 3
+	  delay: 5
+	  until: node_patch_results is success
 
     - name: Show results from node patching
       debug:
