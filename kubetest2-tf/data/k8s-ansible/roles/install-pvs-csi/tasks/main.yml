@@ -26,7 +26,7 @@
 
 - name: Load instance list from file
   set_fact:
-    instances: "{{ lookup('file', './' + cluster_name + '/instance_list.json') | from_json }}"
+    instances: "{{ lookup('file', './instance_list.json') | from_json }}"
   failed_when: instances is not defined or instances | length == 0
 
 - name: Patch all nodes with providerID
