@@ -1,4 +1,29 @@
 ---
+- name: Debug current working directory
+  command: pwd
+  register: current_dir
+
+- name: Show current working directory
+  debug:
+    msg: "Current directory: {{ current_dir.stdout }}"
+
+- name: List files in current directory
+  command: ls -la
+  register: ls_output
+
+- name: Show files in current directory
+  debug:
+    msg: "{{ ls_output.stdout_lines }}"
+
+- name: List cluster directory
+  command: ls -la ./{{ cluster_name }}
+  register: cluster_ls
+  ignore_errors: true
+
+- name: Show cluster directory contents
+  debug:
+    msg: "{{ cluster_ls.stdout_lines }}"
+
 - name: Load instance list from file
   set_fact:
     instances: "{{ lookup('file', './' + cluster_name + '/instance_list.json') | from_json }}"
