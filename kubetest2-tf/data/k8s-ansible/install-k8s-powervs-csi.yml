@@ -30,7 +30,6 @@
 
 - name: Install CSI Driver and run e2e
   hosts: localhost
-  gather_facts: no
   environment:
     KUBECONFIG: "{{ kubeconfig_path }}"
   roles:
