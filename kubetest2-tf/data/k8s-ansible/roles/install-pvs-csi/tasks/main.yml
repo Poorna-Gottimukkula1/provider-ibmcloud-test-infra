@@ -1,28 +1,20 @@
 ---
-- name: Debug current working directory
-  command: pwd
-  register: current_dir
+- name: Wait until at least one node exists
+  command: kubectl get nodes -o=name
+  register: nodes_result
+  retries: 30
+  delay: 10
+  until: nodes_result.stdout_lines | length > 0
+  ignore_errors: yes
 
-- name: Show current working directory
+- name: Show active nodes
   debug:
-    msg: "Current directory: {{ current_dir.stdout }}"
+    msg: "Active nodes: {{ nodes_result.stdout_lines }}"
 
-- name: List files in current directory
-  command: ls -la
-  register: ls_output
-
-- name: Show files in current directory
-  debug:
-    msg: "{{ ls_output.stdout_lines }}"
-
-- name: List cluster directory
-  command: ls -la ./{{ cluster_name }}
-  register: cluster_ls
-  ignore_errors: true
-
-- name: Show cluster directory contents
-  debug:
-    msg: "{{ cluster_ls.stdout_lines }}"
+- name: Fail if no nodes became active
+  fail:
+    msg: "No Kubernetes nodes became active after {{ retries }} attempts"
+  when: nodes_result.stdout_lines | length == 0
 
 - name: Load instance list from file
   set_fact:
