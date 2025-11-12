@@ -30,5 +30,7 @@
 
 - name: patch providerid
   hosts: localhost
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
   roles:
     - role: install-pvs-csi
