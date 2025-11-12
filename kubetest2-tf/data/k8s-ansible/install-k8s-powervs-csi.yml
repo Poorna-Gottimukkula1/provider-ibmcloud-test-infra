@@ -28,7 +28,7 @@
     - role: install-flannel
       when: cni_provider == "flannel"
 
-- name: patch providerid
+- name: Install CSI Driver and run e2e
   hosts: localhost
   environment:
     KUBECONFIG: "{{ kubeconfig_path }}"
