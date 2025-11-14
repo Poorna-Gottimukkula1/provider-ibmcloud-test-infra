@@ -29,7 +29,7 @@
       when: cni_provider == "flannel"
 
 - name: Install CSI Driver and run e2e
-  hosts: localhost
+  hosts: masters
   environment:
     KUBECONFIG: "{{ kubeconfig_path }}"
   roles:
