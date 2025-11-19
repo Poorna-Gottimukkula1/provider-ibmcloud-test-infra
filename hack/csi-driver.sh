@@ -41,7 +41,7 @@ done
 #curl -s https://raw.githubusercontent.com/kubernetes-sigs/ibm-powervs-block-csi-driver/main/deploy/kubernetes/secret.yaml -o secret.yaml
 
 echo "[INFO] Creating IBMCLOUD_API_KEY secret key"
-kubectl create secret generic ibm-secret-test \
+kubectl create secret generic ibm-secret \
   -n kube-system \
   --from-literal=IBMCLOUD_API_KEY="$TF_VAR_powervs_api_key" \
   --dry-run=client -o yaml | kubectl apply -f - 
@@ -58,6 +58,17 @@ kubectl apply -k "https://github.com/kubernetes-sigs/ibm-powervs-block-csi-drive
 
 echo "[INFO] Waiting for CSI pods to be running..."
 kubectl -n kube-system wait --for=condition=Ready pod -l app.kubernetes.io/name=ibm-powervs-block-csi-driver --timeout=300s
+
+echo "[INFO] Waiting for CSI pods to be running..."
+kubectl -n kube-system wait --for=condition=Ready pod -l app.kubernetes.io/name=ibm-powervs-block-csi-driver --timeout=300s
+
+# Check if the kubectl command was successful
+if [ $? -ne 0 ]; then
+  echo "[ERROR] CSI pods did not become ready in the allotted time. Exiting script."
+  exit 1
+fi
+
+echo "[INFO] CSI pods are now running."
 
 ### ---------------------------------------------------
 ### 4. LABEL NODES (AUTO)
