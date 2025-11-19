@@ -56,8 +56,6 @@ kubectl create secret generic ibm-secret \
 echo "[INFO] Installing PowerVS CSI driver..."
 kubectl apply -k "https://github.com/kubernetes-sigs/ibm-powervs-block-csi-driver/deploy/kubernetes/overlays/stable/?ref=v0.10.0"
 
-echo "[INFO] Waiting for CSI pods to be running..."
-kubectl -n kube-system wait --for=condition=Ready pod -l app.kubernetes.io/name=ibm-powervs-block-csi-driver --timeout=300s
 
 echo "[INFO] Waiting for CSI pods to be running..."
 kubectl -n kube-system wait --for=condition=Ready pod -l app.kubernetes.io/name=ibm-powervs-block-csi-driver --timeout=300s
