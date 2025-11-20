@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euox pipefail
+set -euo pipefail
 
 ### ---------------------------------------------------
 ### 0. BASIC CONFIG
