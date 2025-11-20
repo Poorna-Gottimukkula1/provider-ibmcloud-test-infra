@@ -202,111 +202,6 @@ func (d *deployer) Up() error {
 			break
 		}
 	}
-	// if d.FetchInstanceData {
-	// 	klog.Infof("Fetching instance data from Terraform output...")
-
-	// 	// Get Terraform output as a map
-	// 	tfOutput, err := terraform.Output(d.tmpDir, d.TargetProvider)
-	// 	if err != nil {
-	// 		return fmt.Errorf("failed to get terraform output: %v", err)
-	// 	}
-
-	// 	fmt.Println("--------- terraform output ---------")
-	// 	fmt.Printf("%+v\n", tfOutput)
-
-	// 	// Normalize any type into JSON bytes
-	// 	toJSONBytes := func(raw interface{}) []byte {
-	// 		switch v := raw.(type) {
-	// 		case []byte:
-	// 			return v
-	// 		case string:
-	// 			return []byte(v)
-	// 		default:
-	// 			// Handle []uint8 and any other types via reflection or json.Marshal
-	// 			if b, ok := v.([]uint8); ok {
-	// 				return b
-	// 			}
-	// 			b, _ := json.Marshal(v)
-	// 			return b
-	// 		}
-	// 	}
-
-	// 	// Extract instances with id + name
-	// 	extractInstances := func(tfOut map[string]interface{}, key string) ([]map[string]string, error) {
-	// 		raw, ok := tfOut[key]
-	// 		if !ok {
-	// 			return nil, fmt.Errorf("%s not found in terraform output", key)
-	// 		}
-
-	// 		rawJSON := toJSONBytes(raw)
-
-	// 		// Try array format first: [ {id, name}, ... ]
-	// 		var directList []map[string]interface{}
-	// 		if err := json.Unmarshal(rawJSON, &directList); err == nil {
-	// 			var instances []map[string]string
-	// 			for _, v := range directList {
-	// 				entry := map[string]string{}
-	// 				if id, ok := v["id"].(string); ok {
-	// 					entry["id"] = id
-	// 				}
-	// 				if name, ok := v["name"].(string); ok {
-	// 					entry["name"] = name
-	// 				}
-	// 				instances = append(instances, entry)
-	// 			}
-	// 			return instances, nil
-	// 		}
-
-	// 		// Fallback: wrapped format { "value": [...] }
-	// 		var wrapped struct {
-	// 			Value []map[string]interface{} `json:"value"`
-	// 		}
-	// 		if err := json.Unmarshal(rawJSON, &wrapped); err == nil && len(wrapped.Value) > 0 {
-	// 			var instances []map[string]string
-	// 			for _, v := range wrapped.Value {
-	// 				entry := map[string]string{}
-	// 				if id, ok := v["id"].(string); ok {
-	// 					entry["id"] = id
-	// 				}
-	// 				if name, ok := v["name"].(string); ok {
-	// 					entry["name"] = name
-	// 				}
-	// 				instances = append(instances, entry)
-	// 			}
-	// 			return instances, nil
-	// 		}
-
-	// 		return nil, fmt.Errorf("%s format is invalid", key)
-	// 	}
-
-	// 	// Extract master + worker instance data
-	// 	masters, err := extractInstances(tfOutput, "master_instance_list")
-	// 	if err != nil {
-	// 		return fmt.Errorf("failed to extract masters: %v", err)
-	// 	}
-	// 	workers, err := extractInstances(tfOutput, "worker_instance_list")
-	// 	if err != nil {
-	// 		return fmt.Errorf("failed to extract workers: %v", err)
-	// 	}
-
-	// 	// Combine all instances
-	// 	allInstances := append(masters, workers...)
-
-	// 	// Save to JSON file
-	// 	instanceListFile := filepath.Join(d.tmpDir, "instance_list.json")
-	// 	instanceListData, err := json.MarshalIndent(allInstances, "", "  ")
-	// 	if err != nil {
-	// 		return fmt.Errorf("failed to marshal instance list: %v", err)
-	// 	}
-	// 	if err := os.WriteFile(instanceListFile, instanceListData, 0644); err != nil {
-	// 		return fmt.Errorf("failed to write instance list file: %v", err)
-	// 	}
-
-	// 	klog.Infof("✅ All Instances: %s", string(instanceListData))
-	// }
-
-
-
 
 	// --- Generate the Ansible inventory file for masters/workers IPs ---
 	inventory := AnsibleInventory{}
@@ -339,13 +234,10 @@ func (d *deployer) Up() error {
 			}
 		}
 		tfOutput = normalized
-		fmt.Println("---------data-vpc L341 block normalize  ---------", tfOutput)
 	} else {
 		if err := json.Unmarshal(data, &tfOutput); err != nil {
 			return fmt.Errorf("error while unmarshaling data %v", err)
 		}
-		fmt.Println("---------data-L318 else block normalize  ---------", tfOutput)
-		fmt.Println("---------data-L320 terraform output-unmarshal ---------", data)
 	}
 	for _, machineType := range []string{"Masters", "Workers"} {
 
