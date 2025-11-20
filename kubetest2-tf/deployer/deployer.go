@@ -147,7 +147,7 @@ func New(opts types.Options) (types.Deployer, *pflag.FlagSet) {
 		Playbook:          "install-k8s.yml",
 		SetKubeconfig:     true,
 		TargetProvider:    "powervs",
-		FetchInstanceData: false, // Default to false unless the flag is passed
+		FetchInstanceData: false,
 	}
 	flagSet, err := gpflag.Parse(d)
 	if err != nil {
@@ -202,18 +202,14 @@ func (d *deployer) Up() error {
 			break
 		}
 	}
-
 	// --- Generate the Ansible inventory file for masters/workers IPs ---
 	inventory := AnsibleInventory{}
 	tfMetaOutput, err := terraform.Output(d.tmpDir, d.TargetProvider)
 	if err != nil {
 		return err
 	}
-	fmt.Println("---------tfMetaOutput-L313 terraform output ---------", tfMetaOutput)
 	var tfOutput map[string][]interface{}
-	fmt.Println("---------tfOutput-L318 terraform output ---------", tfOutput)
 	data, err := json.Marshal(tfMetaOutput)
-	fmt.Println("---------data-L320 terraform output marshal ---------", data)
 	if err != nil {
 		return fmt.Errorf("error while marshaling data %v", err)
 	}
@@ -240,7 +236,6 @@ func (d *deployer) Up() error {
 		}
 	}
 	for _, machineType := range []string{"Masters", "Workers"} {
-
 		if machineIps, ok := tfOutput[strings.ToLower(machineType)]; !ok {
 			return fmt.Errorf("error while unmarshaling machine IPs from terraform output")
 		} else {
