@@ -9,7 +9,7 @@ export KUBECONFIG="${KUBECONFIG:-/workspace/test-repo/provider-ibmcloud-test-inf
 export POWERVS_REGION="${POWERVS_REGION:-syd}"
 export POWERVS_ZONE="${POWERVS_ZONE:-syd05}"
 export POWERVS_CLOUD_INSTANCE_ID="${POWERVS_CLOUD_INSTANCE_ID:-17b50a72-238e-4849-aed0-8c139564b92a}"
-export INSTANCE_LIST_JSON="${INSTANCE_LIST_JSON:-/workspace/test-repo/provider-ibmcloud-test-infra/test-k8s-vm-new/instance_list.json}"
+#export INSTANCE_LIST_JSON="${INSTANCE_LIST_JSON:-/workspace/test-repo/provider-ibmcloud-test-infra/test-k8s-vm-new/instance_list.json}"
 export CSI_VERSION="${CSI_VERSION:-v0.10.0}"
 
 
