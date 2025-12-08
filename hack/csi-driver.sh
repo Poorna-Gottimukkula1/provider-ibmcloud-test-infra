@@ -125,7 +125,11 @@ rm -rf ibm-powervs-block-csi-driver
 git clone https://github.com/kubernetes-sigs/ibm-powervs-block-csi-driver.git
 cd ibm-powervs-block-csi-driver
 
-echo "[INFO] Running e2e tests..."
-make test-e2e
+ginkgo \
+  --v \
+  --timeout=100m \
+  --junit-report="junit-e2e-report.xml" \
+  sigs.k8s.io/ibm-powervs-block-csi-driver/tests/e2e \
+  --focus="TestE2E"
 
 echo "[SUCCESS] All steps completed successfully!"
