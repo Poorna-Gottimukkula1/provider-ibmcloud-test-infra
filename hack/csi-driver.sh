@@ -138,20 +138,23 @@ fi
 
 which ginkgo || { echo "[ERROR] ginkgo installation failed"; exit 1; }
 
-echo "[INFO] Running Ginkgo tests with JUnit..."
-ginkgo run \
-  --v \
-  --timeout=100m \
-  --junit-report=junit-e2e-report.xml \
-  --focus="TestE2E" \
-  sigs.k8s.io/ibm-powervs-block-csi-driver/tests/e2e 
-  make test-e2e
-  
+echo "[INFO] Running official CSI E2E tests with make..."
+make test-e2e
 rc=$?
 
+
+### ---------------------------------------------------
+### 10. HANDLE TEST OUTPUT
+### ---------------------------------------------------
+
 if [[ $rc -ne 0 ]]; then
-  echo "[ERROR] Ginkgo E2E tests failed with exit code $rc"
-  exit $rc
+  echo "[ERROR] CSI E2E tests failed with exit code: $rc"
+else
+  echo "[SUCCESS] CSI tests completed successfully."
 fi
 
-echo "[SUCCESS] All steps completed successfully!"
+echo "[INFO] Collecting JUnit reports..."
+mkdir -p /workspace/artifacts || true
+cp -v /tmp/*.xml /workspace/artifacts 2>/dev/null || echo "No JUnit results found."
+
+exit "$rc"
