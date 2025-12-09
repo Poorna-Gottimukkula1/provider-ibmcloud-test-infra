@@ -145,6 +145,7 @@ ginkgo run \
   --junit-report=junit-e2e-report.xml \
   --focus="TestE2E" \
   sigs.k8s.io/ibm-powervs-block-csi-driver/tests/e2e 
+  make test-e2e
   
 rc=$?
 
