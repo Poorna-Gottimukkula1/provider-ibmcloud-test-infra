@@ -139,8 +139,11 @@ fi
 which ginkgo || { echo "[ERROR] ginkgo installation failed"; exit 1; }
 
 echo "[INFO] Running Ginkgo tests with JUnit..."
-ginkgo --v --timeout=100m --junit-report=junit-e2e-report.xml \
-    sigs.k8s.io/ibm-powervs-block-csi-driver/tests/e2e \
-    --focus="TestE2E"
-
+ginkgo run \
+  --v \
+  --timeout=100m \
+  --junit-report=junit-e2e-report.xml \
+  --focus="TestE2E" \
+  sigs.k8s.io/ibm-powervs-block-csi-driver/tests/e2e 
+  
 echo "[SUCCESS] All steps completed successfully!"
