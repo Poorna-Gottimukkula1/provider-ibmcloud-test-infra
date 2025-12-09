@@ -146,4 +146,11 @@ ginkgo run \
   --focus="TestE2E" \
   sigs.k8s.io/ibm-powervs-block-csi-driver/tests/e2e 
   
+rc=$?
+
+if [[ $rc -ne 0 ]]; then
+  echo "[ERROR] Ginkgo E2E tests failed with exit code $rc"
+  exit $rc
+fi
+
 echo "[SUCCESS] All steps completed successfully!"
