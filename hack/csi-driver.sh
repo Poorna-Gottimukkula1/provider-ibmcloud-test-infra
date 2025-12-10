@@ -125,18 +125,7 @@ rm -rf ibm-powervs-block-csi-driver
 git clone https://github.com/kubernetes-sigs/ibm-powervs-block-csi-driver.git
 cd ibm-powervs-block-csi-driver
 
-echo "[INFO] Ensuring ginkgo is in PATH..."
-export PATH=$PATH:$(go env GOPATH)/bin
-which ginkgo || { echo "ERROR: ginkgo still not found."; exit 1; }
-
-echo "[INFO] Running e2e tests with JUnit output..."
-ginkgo \
-  --v \
-  --timeout=100m \
-  --junit-report="junit-e2e-report.xml" \
-  sigs.k8s.io/ibm-powervs-block-csi-driver/tests/e2e \
-  --focus="TestE2E"
-
-[ -f junit-e2e-report.xml ] && cp -rp junit-e2e-report.xml $ARTIFACTS/
+echo "[INFO] Running e2e tests..."
+make test-e2e
 
 echo "[SUCCESS] All steps completed successfully!"
