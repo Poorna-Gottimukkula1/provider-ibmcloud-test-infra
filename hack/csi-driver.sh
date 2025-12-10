@@ -137,4 +137,6 @@ ginkgo \
   sigs.k8s.io/ibm-powervs-block-csi-driver/tests/e2e \
   --focus="TestE2E"
 
+[ -f junit-e2e-report.xml ] && cp -rp junit-e2e-report.xml $ARTIFACTS/
+
 echo "[SUCCESS] All steps completed successfully!"
