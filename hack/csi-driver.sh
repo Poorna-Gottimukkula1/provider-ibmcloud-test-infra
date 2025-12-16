@@ -139,10 +139,6 @@ fi
 which ginkgo || { echo "[ERROR] ginkgo installation failed"; exit 1; }
 
 rm -f *.xml
-
 echo "[INFO] Running official CSI E2E tests with ginkgo"
-ginkgo -v --junit-report=csi_driver_report.xml ./tests/e2e
-cp -rp *.xml $ARTIFACTS/
-echo $ARTIFACTS/
-pwd $ARTIFACTS/
 ls -la $ARTIFACTS/
+ginkgo -v --junit-report=$ARTIFACTS/csi_driver_report.xml ./tests/e2e
