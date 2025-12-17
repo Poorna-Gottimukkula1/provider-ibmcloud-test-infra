@@ -140,5 +140,6 @@ which ginkgo || { echo "[ERROR] ginkgo installation failed"; exit 1; }
 
 rm -f *.xml
 echo "[INFO] Running official CSI E2E tests with ginkgo"
+
 ls -la $ARTIFACTS/
 ginkgo -v --junit-report=$ARTIFACTS/junit_report.xml ./tests/e2e
