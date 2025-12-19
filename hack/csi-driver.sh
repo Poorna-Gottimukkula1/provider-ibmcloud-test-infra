@@ -14,7 +14,7 @@ export CSI_VERSION="${CSI_VERSION:-v0.10.0}"
 
 
 # -------------------------
-# Check required environment variables
+# 1. Check required environment variables
 # -------------------------
 required_vars=("KUBECONFIG" "POWERVS_REGION" "POWERVS_ZONE" "POWERVS_CLOUD_INSTANCE_ID" "INSTANCE_LIST_JSON")
 
@@ -29,7 +29,7 @@ echo "[INFO] Using KUBECONFIG = $KUBECONFIG"
 kubectl get nodes
 
 ### ---------------------------------------------------
-### 1. PATCH PROVIDER ID FOR ALL NODES
+### 2. PATCH PROVIDER ID FOR ALL NODES
 ### ---------------------------------------------------
 
 echo "[INFO] Starting providerID patching..."
@@ -47,7 +47,7 @@ for row in $(jq -c '.[]' "$INSTANCE_LIST_JSON"); do
 done
 
 ### ---------------------------------------------------
-### 2. CREATE & APPLY CSI SECRET
+### 3. CREATE & APPLY CSI SECRET
 ### ---------------------------------------------------
 
 if [[ -z "${TF_VAR_powervs_api_key:-$IBMCLOUD_API_KEY}" ]]; then
@@ -63,13 +63,13 @@ kubectl create secret generic ibm-secret \
   --dry-run=client -o yaml | kubectl apply -f -
 
 # -------------------------
-# 3. Install CSI driver
+# 4. Install CSI driver
 # -------------------------
 echo "[INFO] Installing PowerVS CSI driver version $CSI_VERSION..."
 kubectl apply -k "https://github.com/kubernetes-sigs/ibm-powervs-block-csi-driver/deploy/kubernetes/overlays/stable/?ref=$CSI_VERSION"
 
 # -------------------------
-# 4. Wait for controller deployment
+# 5. Wait for controller deployment
 # -------------------------
 echo "[INFO] Waiting for powervs-csi-controller deployment to become available..."
 if ! kubectl -n kube-system wait --for=condition=available deployment/powervs-csi-controller --timeout=300s; then
@@ -79,7 +79,7 @@ if ! kubectl -n kube-system wait --for=condition=available deployment/powervs-cs
 fi
 
 # -------------------------
-# 5. Wait for node pods
+# 6. Wait for node pods
 # -------------------------
 echo "[INFO] Waiting for CSI node pods to become ready..."
 if ! kubectl -n kube-system wait --for=condition=Ready pod -l app.kubernetes.io/name=ibm-powervs-block-csi-driver --timeout=300s; then
@@ -89,7 +89,7 @@ if ! kubectl -n kube-system wait --for=condition=Ready pod -l app.kubernetes.io/
 fi
 
 # -------------------------
-# 6. Verify installation
+# 7. Verify installation
 # -------------------------
 echo "[INFO] CSI driver installed successfully. Current deployments and pods:"
 kubectl get deploy -n kube-system -l app.kubernetes.io/name=ibm-powervs-block-csi-driver
@@ -98,7 +98,7 @@ kubectl get pods -n kube-system -l app.kubernetes.io/name=ibm-powervs-block-csi-
 echo "[INFO] PowerVS CSI driver installation complete."
 
 ### ---------------------------------------------------
-### 4. LABEL NODES (AUTO)
+### 8. LABEL NODES (AUTO)
 ### ---------------------------------------------------
 
 echo "[INFO] Applying node labels..."
@@ -117,7 +117,7 @@ for row in $(jq -c '.[]' "$INSTANCE_LIST_JSON"); do
 done
 
 ### ---------------------------------------------------
-### 5. RUN CSI E2E TESTS
+### 9. RUN CSI E2E TESTS
 ### ---------------------------------------------------
 
 echo "[INFO] Cloning CSI repo..."
