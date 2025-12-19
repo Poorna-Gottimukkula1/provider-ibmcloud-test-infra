@@ -100,7 +100,7 @@ download-tf-plugins-from-cos: ## Download Terraform plugins from IBM Cloud COS
 
 
 install-deployer-tf: ## Install kubetest2-tf deployer from source or downloads prebuilt binaries from COS
-	@if [ "$$(uname -m)" = "ppc64le" ]; then \
+	@if [ "$$(uname -m)" = "ppc64le-test" ]; then \
 		$(MAKE) install-ansible; \
 		$(MAKE) download-from-cos WHAT='kubetest2-tf terraform'; \
 		$(MAKE) download-tf-plugins-from-cos; \
