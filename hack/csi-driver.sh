@@ -126,6 +126,20 @@ git clone https://github.com/kubernetes-sigs/ibm-powervs-block-csi-driver.git
 cd ibm-powervs-block-csi-driver
 
 echo "[INFO] Running e2e tests..."
-make test-e2e
 
-echo "[SUCCESS] All steps completed successfully!"
+echo "[INFO] Ensuring ginkgo exists..."
+
+# Ensure GOPATH exists in prow/golang environment
+export GOPATH="${GOPATH:-$(go env GOPATH || echo /root/go)}"
+export PATH="$PATH:$GOPATH/bin"
+
+if ! command -v ginkgo >/dev/null; then
+  echo "[WARN] ginkgo not found. Installing..."
+  go install github.com/onsi/ginkgo/v2/ginkgo@latest
+fi
+
+which ginkgo || { echo "[ERROR] ginkgo installation failed"; exit 1; }
+
+echo "[INFO] Running official CSI E2E tests with ginkgo"
+
+ginkgo -v --junit-report=$ARTIFACTS/junit_report.xml ./tests/e2e
