@@ -333,7 +333,13 @@ func (d *deployer) Up() error {
 
 			for _, inst := range list {
 				if id, name := fmt.Sprint(inst["id"]), fmt.Sprint(inst["name"]); id != "" && name != "" {
-					instances = append(instances, map[string]string{"id": id, "name": name})
+					instances = append(instances, map[string]string{
+						"id":                  id,
+						"name":                name,
+						"region":              d.BoskosResourceUserData["region"],
+						"zone":                d.BoskosResourceUserData["zone"],
+						"service_instance_id": d.BoskosResourceUserData["service-instance-id"]
+					})
 				}
 			}
 		}
