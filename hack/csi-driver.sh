@@ -42,9 +42,6 @@ info "Using IBM PowerVS Block CSI Driver version: $CSI_VERSION"
 # Required variables
 required_vars=(
   KUBECONFIG
-  BOSKOS_REGION
-  BOSKOS_ZONE
-  BOSKOS_RESOURCE_ID
   INSTANCE_LIST_JSON
 )
 
@@ -63,11 +60,18 @@ kubectl get nodes
 # ============================================================
 section "2. PATCH PROVIDERID FOR ALL NODES"
 
-for row in $(jq -c '.[]' "$INSTANCE_LIST_JSON"); do
+# Read shared values from JSON
+POWERVS_REGION=$(jq -r '.region' "$INSTANCE_LIST_JSON")
+POWERVS_ZONE=$(jq -r '.zone' "$INSTANCE_LIST_JSON")
+POWERVS_SERVICE_ID=$(jq -r '.serviceInstanceID' "$INSTANCE_LIST_JSON")
+
+export POWERVS_REGION POWERVS_ZONE POWERVS_SERVICE_ID
+
+for row in $(jq -c '.instances[]' "$INSTANCE_LIST_JSON"); do
   INSTANCE_ID=$(echo "$row" | jq -r '.id')
   NODE_NAME=$(echo "$row" | jq -r '.name')
 
-  PROVIDER_ID="ibmpowervs://$BOSKOS_REGION/$BOSKOS_ZONE/$BOSKOS_RESOURCE_ID/$INSTANCE_ID"
+  PROVIDER_ID="ibmpowervs://$POWERVS_REGION/$POWERVS_ZONE/$POWERVS_SERVICE_ID/$INSTANCE_ID"
 
   info "Patching providerID on node: $NODE_NAME"
   echo "       $PROVIDER_ID"
@@ -166,12 +170,12 @@ kubectl get pods -n kube-system -l app.kubernetes.io/name=ibm-powervs-block-csi-
 # ============================================================
 section "8. LABEL NODES"
 
-for row in $(jq -c '.[]' "$INSTANCE_LIST_JSON"); do
+for row in $(jq -c '.instances[]' "$INSTANCE_LIST_JSON"); do
   INSTANCE_ID=$(echo "$row" | jq -r '.id')
   NODE_NAME=$(echo "$row" | jq -r '.name')
 
   kubectl label node "$NODE_NAME" \
-    powervs.kubernetes.io/cloud-instance-id="$BOSKOS_RESOURCE_ID" --overwrite
+    powervs.kubernetes.io/cloud-instance-id="$POWERVS_SERVICE_ID" --overwrite
 
   kubectl label node "$NODE_NAME" \
     powervs.kubernetes.io/pvm-instance-id="$INSTANCE_ID" --overwrite
