@@ -335,10 +335,7 @@ func (d *deployer) Up() error {
 				if id, name := fmt.Sprint(inst["id"]), fmt.Sprint(inst["name"]); id != "" && name != "" {
 					instances = append(instances, map[string]string{
 						"id":                  id,
-						"name":                name,
-						"region":              d.BoskosResourceUserData["region"],
-						"zone":                d.BoskosResourceUserData["zone"],
-						"service_instance_id": d.BoskosResourceUserData["service-instance-id"]
+						"name":                name
 					})
 				}
 			}
@@ -348,8 +345,14 @@ func (d *deployer) Up() error {
 			klog.Warning("No instance data found in Terraform output")
 			return nil
 		}
-
-		data, _ := json.MarshalIndent(instances, "", "  ")
+		// Build normalized instance list object
+		instanceList := map[string]interface{}{
+			"region":            d.BoskosResourceUserData["region"],
+			"zone":              d.BoskosResourceUserData["zone"],
+			"serviceInstanceID": d.BoskosResourceUserData["service-instance-id"],
+			"instances":         instances
+		}
+		data, _ := json.MarshalIndent(instanceList, "", "  ")
 		file := filepath.Join(d.tmpDir, "instance_list.json")
 		if err := os.WriteFile(file, data, 0644); err != nil {
 			return fmt.Errorf("failed to write instance list: %v", err)
