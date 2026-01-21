@@ -338,7 +338,7 @@ func (d *deployer) Up() error {
 						"name":                name,
 						"region":              d.BoskosResourceUserData["region"],
 						"zone":                d.BoskosResourceUserData["zone"],
-						"service_instance_id": d.BoskosResourceUserData["service-instance-id"]
+						"service_instance_id": d.BoskosResourceUserData["service-instance-id"],
 					})
 				}
 			}
