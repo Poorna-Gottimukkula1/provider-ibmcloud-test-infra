@@ -333,10 +333,7 @@ func (d *deployer) Up() error {
 
 			for _, inst := range list {
 				if id, name := fmt.Sprint(inst["id"]), fmt.Sprint(inst["name"]); id != "" && name != "" {
-					instances = append(instances, map[string]string{
-						"id":                  id,
-						"name":                name
-					})
+					instances = append(instances, map[string]string{"id": id, "name": name})
 				}
 			}
 		}
@@ -350,7 +347,7 @@ func (d *deployer) Up() error {
 			"region":            d.BoskosResourceUserData["region"],
 			"zone":              d.BoskosResourceUserData["zone"],
 			"serviceInstanceID": d.BoskosResourceUserData["service-instance-id"],
-			"instances":         instances
+			"instances":         instances,
 		}
 		data, _ := json.MarshalIndent(instanceList, "", "  ")
 		file := filepath.Join(d.tmpDir, "instance_list.json")
