@@ -323,6 +323,10 @@ func (d *deployer) Up() error {
 		}
 
 		// Write to file
+		var list map[string]interface{}
+		if err := json.Unmarshal(allInstancesRaw.(json.RawMessage), &list); err != nil {
+		    return fmt.Errorf("failed to unmarshal all_instances: %v", err)
+	    }
 		data, err := json.MarshalIndent(allInstancesRaw, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal all_instances: %v", err)
