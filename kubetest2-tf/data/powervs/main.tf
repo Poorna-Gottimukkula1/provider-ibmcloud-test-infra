@@ -77,3 +77,18 @@ resource "null_resource" "wait-for-workers-completes" {
     ]
   }
 }
+
+# --- Generate all-instances JSON file ---
+locals {
+  all_instances = {
+    instances = concat(module.master.instance_list, module.workers.instance_list)
+    region            = var.powervs_region
+    serviceInstanceID = var.powervs_service_id
+    zone              = var.powervs_zone
+  }
+}
+
+resource "local_file" "all_instances_json" {
+  filename = "${path.module}/all_instances.json"
+  content  = jsonencode(local.all_instances)
+}
