@@ -79,13 +79,36 @@ resource "null_resource" "wait-for-workers-completes" {
 }
 
 locals {
-  all_instances = {
-    instances = concat(
-      module.master.instance_list,
-      module.workers.instance_list
-    )
-    region            = var.powervs_region
-    serviceInstanceID = var.powervs_service_id
-    zone              = var.powervs_zone
+  instances = concat(
+    module.master.instance_list,
+    module.workers.instance_list
+  )
+}
+
+data "template_file" "instance_list_template" {
+  template = <<EOT
+{
+  "instances": [
+    %{ for instance in local.instances ~}
+    {
+      "id": "${instance.id}",
+      "name": "${instance.name}"
+    }%{ if length(local.instances) > 1 && instance != local.instances[length(local.instances)-1] },%{ endif }
+    %{ endfor ~}
+  ],
+  "region": "${var.powervs_region}",
+  "serviceInstanceID": "${var.powervs_service_id}",
+  "zone": "${var.powervs_zone}"
+}
+EOT
+}
+
+resource "null_resource" "generate_instance_list_json" {
+  provisioner "local-exec" {
+    command = <<EOT    
+echo '${data.template_file.instance_list_template.rendered}' > ${path.root}/instance_list.json
+cat '${path.root}/instance_list.json'
+ls -la '${path.root}/instance_list.json'
+EOT
   }
 }
