@@ -315,47 +315,67 @@ func (d *deployer) Up() error {
 	}
 	// --- Generate instance list (IDs and Names) from Terraform output ---
 	if d.FetchInstanceData {
-		klog.Info("Fetching instance ID and Name data from Terraform output...")
 
-		instances := []map[string]string{}
-
-		for _, key := range []string{"master_instance_list", "worker_instance_list"} {
-			raw, ok := tfMetaOutput[key]
-			if !ok {
-				klog.Warningf("%s not found in terraform output", key)
-				continue
-			}
-
-			var list []map[string]interface{}
-			if err := json.Unmarshal(raw.(json.RawMessage), &list); err != nil {
-				return fmt.Errorf("failed to unmarshal %s: %w", key, err)
-			}
-
-			for _, inst := range list {
-				if id, name := fmt.Sprint(inst["id"]), fmt.Sprint(inst["name"]); id != "" && name != "" {
-					instances = append(instances, map[string]string{"id": id, "name": name})
-				}
-			}
+		// Get combined instance data
+		allInstancesRaw, ok := tfMetaOutput["all_instances"]
+		if !ok {
+			return fmt.Errorf("all_instances not found in terraform output")
 		}
 
-		if len(instances) == 0 {
-			klog.Warning("No instance data found in Terraform output")
-			return nil
+		// Write to file
+		data, err := json.MarshalIndent(allInstancesRaw, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal all_instances: %v", err)
 		}
-		// Build normalized instance list object
-		instanceList := map[string]interface{}{
-			"region":            d.BoskosResourceUserData["region"],
-			"zone":              d.BoskosResourceUserData["zone"],
-			"serviceInstanceID": d.BoskosResourceUserData["service-instance-id"],
-			"instances":         instances,
-		}
-		data, _ := json.MarshalIndent(instanceList, "", "  ")
-		file := filepath.Join(d.tmpDir, "instance_list.json")
+
+		file := filepath.Join(d.tmpDir, "all_instances.json")
 		if err := os.WriteFile(file, data, 0644); err != nil {
-			return fmt.Errorf("failed to write instance list: %v", err)
+			return fmt.Errorf("failed to write all-instances.json: %v", err)
 		}
 
-        klog.Infof("Instance data written to %s.\nAll Instances: %s", file, string(data))
+		klog.Infof("All instance data written to %s:\n%s", file, string(data))
+
+		// klog.Info("Fetching instance ID and Name data from Terraform output...")
+
+		// instances := []map[string]string{}
+
+		// for _, key := range []string{"master_instance_list", "worker_instance_list"} {
+		// 	raw, ok := tfMetaOutput[key]
+		// 	if !ok {
+		// 		klog.Warningf("%s not found in terraform output", key)
+		// 		continue
+		// 	}
+
+		// 	var list []map[string]interface{}
+		// 	if err := json.Unmarshal(raw.(json.RawMessage), &list); err != nil {
+		// 		return fmt.Errorf("failed to unmarshal %s: %w", key, err)
+		// 	}
+
+		// 	for _, inst := range list {
+		// 		if id, name := fmt.Sprint(inst["id"]), fmt.Sprint(inst["name"]); id != "" && name != "" {
+		// 			instances = append(instances, map[string]string{"id": id, "name": name})
+		// 		}
+		// 	}
+		// }
+
+		// if len(instances) == 0 {
+		// 	klog.Warning("No instance data found in Terraform output")
+		// 	return nil
+		// }
+		// // Build normalized instance list object
+		// instanceList := map[string]interface{}{
+		// 	"region":            d.BoskosResourceUserData["region"],
+		// 	"zone":              d.BoskosResourceUserData["zone"],
+		// 	"serviceInstanceID": d.BoskosResourceUserData["service-instance-id"],
+		// 	"instances":         instances,
+		// }
+		// data, _ := json.MarshalIndent(instanceList, "", "  ")
+		// file := filepath.Join(d.tmpDir, "instance_list.json")
+		// if err := os.WriteFile(file, data, 0644); err != nil {
+		// 	return fmt.Errorf("failed to write instance list: %v", err)
+		// }
+
+        // klog.Infof("Instance data written to %s.\nAll Instances: %s", file, string(data))
 	}
 
 	klog.Infof("Kubernetes cluster node inventory: %+v", inventory)
