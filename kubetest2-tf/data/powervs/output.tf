@@ -32,3 +32,20 @@ output "worker_instance_list" {
   value       = module.workers.instance_list
   description = "List of worker instance IDs and names"
 }
+
+locals {
+  all_instances = {
+    instances = concat(
+      module.master.instance_list,
+      module.workers.instance_list
+    )
+    region            = var.powervs_region
+    serviceInstanceID = var.powervs_service_id
+    zone              = var.powervs_zone
+  }
+}
+
+resource "local_file" "all_instances_json" {
+  filename = "${path.module}/all-instances.json"
+  content  = jsonencode(local.all_instances)
+}
