@@ -342,10 +342,39 @@ func (d *deployer) Up() error {
 			klog.Warning("No instance data found in Terraform output")
 			return nil
 		}
+		regionRaw, ok := tfMetaOutput["region"]
+		if !ok {
+			return fmt.Errorf("region not found in terraform output")
+		}
+		
+		zoneRaw, ok := tfMetaOutput["zone"]
+		if !ok {
+			return fmt.Errorf("zone not found in terraform output")
+		}
+		
+		svcRaw, ok := tfMetaOutput["service_instance_id"]
+		if !ok {
+			return fmt.Errorf("service_instance_id not found in terraform output")
+		}
+		
+		var region, zone, serviceInstanceID string
+		
+		if err := json.Unmarshal(regionRaw.(json.RawMessage), &region); err != nil {
+			return fmt.Errorf("failed to unmarshal region: %w", err)
+		}
+		
+		if err := json.Unmarshal(zoneRaw.(json.RawMessage), &zone); err != nil {
+			return fmt.Errorf("failed to unmarshal zone: %w", err)
+		}
+		
+		if err := json.Unmarshal(svcRaw.(json.RawMessage), &serviceInstanceID); err != nil {
+			return fmt.Errorf("failed to unmarshal service_instance_id: %w", err)
+		}
+		
 		instanceList := map[string]interface{}{
-			"region":            d.BoskosResourceUserData["region"],
-			"zone":              d.BoskosResourceUserData["zone"],
-			"serviceInstanceID": d.BoskosResourceUserData["service-instance-id"],
+			"region":            region,
+			"zone":              zone,
+			"serviceInstanceID": serviceInstanceID,
 			"instances":         instances,
 		}
 
