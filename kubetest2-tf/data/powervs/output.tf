@@ -44,7 +44,7 @@ output "zone" {
 }
 
 output "service_instance_id" {
-  value       = var.powervs_service_instance_id
+  value       = var.powervs_service_id
   description = "PowerVS service instance ID"
 }
 
