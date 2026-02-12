@@ -32,3 +32,19 @@ output "worker_instance_list" {
   value       = module.workers.instance_list
   description = "List of worker instance IDs and names"
 }
+
+output "region" {
+  value       = var.powervs_region
+  description = "PowerVS region used for deployment"
+}
+
+output "zone" {
+  value       = var.powervs_zone
+  description = "PowerVS zone used for deployment"
+}
+
+output "service_instance_id" {
+  value       = var.powervs_service_instance_id
+  description = "PowerVS service instance ID"
+}
+
