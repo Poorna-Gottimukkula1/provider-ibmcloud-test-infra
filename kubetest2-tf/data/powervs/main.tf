@@ -106,9 +106,9 @@ EOT
 resource "null_resource" "generate_instance_list_json" {
   provisioner "local-exec" {
     command = <<EOT    
-echo '${data.template_file.instance_list_template.rendered}' > ${path.root}/instance_list.json
-cat '${path.root}/instance_list.json'
-ls -la '${path.root}/instance_list.json'
+echo "${data.template_file.instance_list_template.rendered}" > ${path.root}/instance_list.json
+cat ${path.root}/instance_list.json
+ls -la ${path.root}/instance_list.json
 EOT
   }
 }
