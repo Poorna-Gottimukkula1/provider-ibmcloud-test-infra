@@ -17,7 +17,8 @@ locals {
     var.powervs_network_name == ""
     ? ibm_pi_network.public_network[0].network_id
     : data.ibm_pi_network.existing_net[0].id
-)
+  )
+}
 
 module "master" {
   source = "./instance"
@@ -101,7 +102,6 @@ locals {
         name = instance.name
       }
     ]
-
     region            = var.powervs_region
     serviceInstanceID = var.powervs_service_id
     zone              = var.powervs_zone
