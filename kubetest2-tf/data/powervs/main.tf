@@ -13,10 +13,11 @@ resource "ibm_pi_network" "public_network" {
 }
 
 locals {
-  network_id = var.powervs_network_name == "" ?
-    ibm_pi_network.public_network[0].network_id :
-    data.ibm_pi_network.existing_net[0].id
-}
+  network_id = (
+    var.powervs_network_name == ""
+    ? ibm_pi_network.public_network[0].network_id
+    : data.ibm_pi_network.existing_net[0].id
+)
 
 module "master" {
   source = "./instance"
