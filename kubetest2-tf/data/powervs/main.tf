@@ -12,15 +12,21 @@ resource "ibm_pi_network" "public_network" {
   pi_dns               = ["8.8.4.4", "8.8.8.8"]
 }
 
+locals {
+  network_id = var.powervs_network_name == "" ?
+    ibm_pi_network.public_network[0].network_id :
+    data.ibm_pi_network.existing_net[0].id
+}
+
 module "master" {
   source = "./instance"
 
   ibmcloud_api_key            = var.powervs_api_key
   image_name                  = var.powervs_image_name
   memory                      = var.controlplane_powervs_memory
-  network                     = var.powervs_network_name == "" ? ibm_pi_network.public_network[0].network_id : data.ibm_pi_network.existing_net[0].id
-  powervs_service_instance_id = var.powervs_service_id
   processors                  = var.controlplane_powervs_processors
+  network                     = local.network_id
+  powervs_service_instance_id = var.powervs_service_id
   ssh_key_name                = var.powervs_ssh_key
   system_type                 = var.powervs_system_type
   storage_tier                = var.powervs_storage_tier
@@ -36,9 +42,9 @@ module "workers" {
   ibmcloud_api_key            = var.powervs_api_key
   image_name                  = var.powervs_image_name
   memory                      = var.powervs_memory
-  network                     = var.powervs_network_name == "" ? ibm_pi_network.public_network[0].network_id : data.ibm_pi_network.existing_net[0].id
-  powervs_service_instance_id = var.powervs_service_id
   processors                  = var.powervs_processors
+  network                     = local.network_id
+  powervs_service_instance_id = var.powervs_service_id
   ssh_key_name                = var.powervs_ssh_key
   system_type                 = var.powervs_system_type
   storage_tier                = var.powervs_storage_tier
@@ -47,7 +53,7 @@ module "workers" {
   ibmcloud_zone               = var.powervs_zone
 }
 
-resource "null_resource" "wait-for-master-completes" {
+resource "null_resource" "wait_for_master" {
   connection {
     type        = "ssh"
     user        = "root"
@@ -55,6 +61,7 @@ resource "null_resource" "wait-for-master-completes" {
     private_key = file(var.ssh_private_key)
     timeout     = "20m"
   }
+
   provisioner "remote-exec" {
     inline = [
       "cloud-init status -w"
@@ -62,8 +69,9 @@ resource "null_resource" "wait-for-master-completes" {
   }
 }
 
-resource "null_resource" "wait-for-workers-completes" {
+resource "null_resource" "wait_for_workers" {
   count = var.workers_count
+
   connection {
     type        = "ssh"
     user        = "root"
@@ -71,6 +79,7 @@ resource "null_resource" "wait-for-workers-completes" {
     private_key = file(var.ssh_private_key)
     timeout     = "15m"
   }
+
   provisioner "remote-exec" {
     inline = [
       "cloud-init status -w"
@@ -83,32 +92,22 @@ locals {
     module.master.instance_list,
     module.workers.instance_list
   )
+
+  instance_json = jsonencode({
+    instances = [
+      for instance in local.instances : {
+        id   = instance.id
+        name = instance.name
+      }
+    ]
+
+    region            = var.powervs_region
+    serviceInstanceID = var.powervs_service_id
+    zone              = var.powervs_zone
+  })
 }
 
-data "template_file" "instance_list_template" {
-  template = <<EOT
-{
-  "instances": [
-    %{ for instance in local.instances ~}
-    {
-      "id": "${instance.id}",
-      "name": "${instance.name}"
-    }%{ if length(local.instances) > 1 && instance != local.instances[length(local.instances)-1] },%{ endif }
-    %{ endfor ~}
-  ],
-  "region": "${var.powervs_region}",
-  "serviceInstanceID": "${var.powervs_service_id}",
-  "zone": "${var.powervs_zone}"
-}
-EOT
-}
-
-resource "null_resource" "generate_instance_list_json" {
-  provisioner "local-exec" {
-    command = <<-EOT    
-echo '${data.template_file.instance_list_template.rendered}' > ${path.root}/instance_list.json
-cat ${path.root}/instance_list.json
-ls -la ${path.root}/instance_list.json
-EOT
-  }
+resource "local_file" "instance_list_json" {
+  content  = local.instance_json
+  filename = "${path.root}/instance_list.json"
 }
