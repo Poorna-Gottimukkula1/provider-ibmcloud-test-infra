@@ -108,7 +108,17 @@ locals {
   })
 }
 
-resource "local_file" "instance_list_json" {
-  content  = local.instance_json
-  filename = "${path.root}/instance_list.json"
+output "instance_data" {
+  value = {
+    instances = [
+      for instance in local.instances : {
+        id   = instance.id
+        name = instance.name
+      }
+    ]
+
+    region            = var.powervs_region
+    zone              = var.powervs_zone
+    serviceInstanceID = var.powervs_service_id
+  }
 }
