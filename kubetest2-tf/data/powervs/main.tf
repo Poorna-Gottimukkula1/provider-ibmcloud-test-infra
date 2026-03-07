@@ -90,7 +90,7 @@ resource "null_resource" "wait_for_workers" {
 }
 
 locals {
-  instances = concat(
+  all_instances = concat(
     module.master.instance_list,
     module.workers.instance_list
   )
