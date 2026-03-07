@@ -107,14 +107,3 @@ locals {
     zone              = var.powervs_zone
   })
 }
-
-output "all_instances" {
-  value = {
-    instances = [
-      for instance in local.instances : {
-        id   = instance.id
-        name = instance.name
-      }
-    ]
-  }
-}
