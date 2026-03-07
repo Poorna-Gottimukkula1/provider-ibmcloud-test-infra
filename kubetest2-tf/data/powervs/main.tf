@@ -109,10 +109,12 @@ locals {
 }
 
 output "all_instances" {
-  value = [
-    for instance in local.instances : {
-      id   = instance.id
-      name = instance.name
-    }
-  ]
+  value = {
+    instances = [
+      for instance in local.instances : {
+        id   = instance.id
+        name = instance.name
+      }
+    ]
+  }
 }
