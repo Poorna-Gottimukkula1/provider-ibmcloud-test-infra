@@ -109,16 +109,10 @@ locals {
 }
 
 output "all_instances" {
-  value = {
-    instances = [
-      for instance in local.instances : {
-        id   = instance.id
-        name = instance.name
-      }
-    ]
-
-    region            = var.powervs_region
-    zone              = var.powervs_zone
-    serviceInstanceID = var.powervs_service_id
-  }
+  value = [
+    for instance in local.instances : {
+      id   = instance.id
+      name = instance.name
+    }
+  ]
 }
