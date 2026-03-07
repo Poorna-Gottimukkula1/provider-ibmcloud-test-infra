@@ -110,11 +110,15 @@ locals {
 
 output "all_instances" {
   value = {
-    instances = local.instances
-    region    = var.powervs_region
-    zone      = var.powervs_zone
+    instances = [
+      for instance in local.instances : {
+        id   = instance.id
+        name = instance.name
+      }
+    ]
+
+    region            = var.powervs_region
+    zone              = var.powervs_zone
     serviceInstanceID = var.powervs_service_id
   }
-
-  description = "All PowerVS instances with metadata"
 }
