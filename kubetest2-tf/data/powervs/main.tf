@@ -94,16 +94,4 @@ locals {
     module.master.instance_list,
     module.workers.instance_list
   )
-
-  instance_json = jsonencode({
-    instances = [
-      for instance in local.instances : {
-        id   = instance.id
-        name = instance.name
-      }
-    ]
-    region            = var.powervs_region
-    serviceInstanceID = var.powervs_service_id
-    zone              = var.powervs_zone
-  })
 }
