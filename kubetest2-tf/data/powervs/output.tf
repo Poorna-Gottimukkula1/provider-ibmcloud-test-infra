@@ -34,6 +34,9 @@ output "worker_instance_list" {
 }
 
 output "all_instances" {
-  value       = local.all_instances
-  description = "All PowerVS instances with IDs and names, plus region/zone/service instance"
+  value = {
+    instances = local.all_instances
+  }
+
+  description = "All PowerVS instances with IDs and names"
 }
