@@ -88,15 +88,19 @@ resource "null_resource" "wait_for_workers" {
     ]
   }
 }
-
 locals {
-  all_instances_list = concat(
-    module.master.instance_list,
-    module.workers.instance_list
-  )
-
-  all_instances = {
-    for inst in local.all_instances_list :
-    inst.name => inst
+  instance_list = {
+    region            = var.powervs_region
+    zone              = var.powervs_zone
+    serviceInstanceID = var.powervs_service_id
+    instances = [
+      for inst in concat(
+        module.master.instance_list,
+        module.workers.instance_list
+      ) : {
+        id   = inst.id
+        name = inst.name
+      }
+    ]
   }
 }
