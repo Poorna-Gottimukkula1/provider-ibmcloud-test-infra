@@ -23,17 +23,7 @@ output "network" {
   description = "Network used for the deployment"
 }
 
-output "master_instance_list" {
-  value       = module.master.instance_list
-  description = "List of master instance IDs and names"
-}
-
-output "worker_instance_list" {
-  value       = module.workers.instance_list
-  description = "List of worker instance IDs and names"
-}
-
-output "all_instances" {
-  value = local.all_instances
-  description = "All PowerVS instances with IDs and names"
+output "instance_list" {
+  value       = local.instance_list
+  description = "All PowerVS instances with region, zone, serviceInstanceID and instance IDs/names"
 }
