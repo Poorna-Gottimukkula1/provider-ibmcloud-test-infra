@@ -103,7 +103,6 @@ type deployer struct {
 	BoskosResourceName             string            `desc:"Boskos Resource name to create Vms in."`
 	BoskosResourceUserData         map[string]string `desc:"Boskos Resource related user data like service-id, zone, region."`
 	BoskosLocation                 string            `desc:"If set, manually specifies the location of the boskos server. If unset and boskos is needed, defaults to http://boskos.test-pods.svc.cluster.local."`
-	FetchInstanceData              bool              `desc:"Flag to fetch instance data and generate instance file"`
 }
 
 func (d *deployer) Version() string {
