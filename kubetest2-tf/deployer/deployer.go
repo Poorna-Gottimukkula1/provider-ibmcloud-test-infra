@@ -299,9 +299,23 @@ func (d *deployer) Up() error {
 		}
 		tfOutput = normalized
 	} else {
-		if err := json.Unmarshal(data, &tfOutput); err != nil {
+		tmp := make(map[string]interface{})
+		if err := json.Unmarshal(data, &tmp); err != nil {
 			return fmt.Errorf("error while unmarshaling data %v", err)
 		}
+		normalized := make(map[string][]interface{})
+		for k, v := range tmp {
+			switch val := v.(type) {
+			case string:
+				normalized[k] = []interface{}{val}
+			case []interface{}:
+				normalized[k] = val
+			default:
+				// object-type outputs like instance_list, network — skip, not needed here
+				normalized[k] = []interface{}{fmt.Sprintf("%v", val)}
+			}
+		}
+		tfOutput = normalized
 	}
 	for _, machineType := range []string{"Masters", "Workers"} {
 		if machineIps, ok := tfOutput[strings.ToLower(machineType)]; !ok {
