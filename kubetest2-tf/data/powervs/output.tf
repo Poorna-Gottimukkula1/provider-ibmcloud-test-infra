@@ -32,8 +32,3 @@ output "worker_instance_list" {
   value       = module.workers.instance_list
   description = "List of worker instance IDs and names"
 }
-
-output "all_instances" {
-  value       = jsonencode(local.instance_list_data)
-  description = "All PowerVS instances with IDs and names, plus region/zone/service instance"
-}
