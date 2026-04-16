@@ -99,7 +99,7 @@ resource "null_resource" "generate_instance_list" {
   
   provisioner "local-exec" {
     command = <<-EOT
-      cat > ${path.root}/instance_list.json <<'EOF'
+      cat <<'EOF' | jq '.' > ${path.root}/instance_list.json
 ${jsonencode(local.instance_list_data)}
 EOF
     EOT
