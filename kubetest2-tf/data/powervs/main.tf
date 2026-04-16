@@ -83,32 +83,30 @@ locals {
     module.master.instance_list,
     module.workers.instance_list
   )
-}
-
-data "template_file" "instance_list_template" {
-  template = <<EOT
-{
-  "instances": [
-    %{ for instance in local.instances ~}
-    {
-      "id": "${instance.id}",
-      "name": "${instance.name}"
-    }%{ if length(local.instances) > 1 && instance != local.instances[length(local.instances)-1] },%{ endif }
-    %{ endfor ~}
-  ],
-  "region": "${var.powervs_region}",
-  "serviceInstanceID": "${var.powervs_service_id}",
-  "zone": "${var.powervs_zone}"
-}
-EOT
-}
-
-resource "null_resource" "generate_instance_list_json" {
-  provisioner "local-exec" {
-    command = <<EOT    
-echo '${data.template_file.instance_list_template.rendered}' > ${path.root}/instance_list.json
-cat '${path.root}/instance_list.json'
-ls -la '${path.root}/instance_list.json'
-EOT
+  
+  instance_list_data = {
+    instances         = local.instances
+    region            = var.powervs_region
+    zone              = var.powervs_zone
+    serviceInstanceID = var.powervs_service_id
   }
+}
+
+resource "null_resource" "generate_instance_list" {
+  triggers = {
+    instances = jsonencode(local.instances)
+  }
+  
+  provisioner "local-exec" {
+    command = <<-EOT
+      cat > ${path.root}/instance_list.json <<'EOF'
+${jsonencode(local.instance_list_data)}
+EOF
+    EOT
+  }
+  
+  depends_on = [
+    module.master,
+    module.workers
+  ]
 }
