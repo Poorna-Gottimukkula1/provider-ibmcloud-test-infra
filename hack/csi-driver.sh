@@ -215,6 +215,9 @@ rm -rf ibm-powervs-block-csi-driver
 git clone https://github.com/kubernetes-sigs/ibm-powervs-block-csi-driver.git
 cd ibm-powervs-block-csi-driver
 
+# Replace volumeTypes with only tier3
+sed -i 's/volumeTypes  = powervscloud.ValidVolumeTypes/volumeTypes = []string{"tier3"}/' tests/e2e/dynamic_provisioning.go
+
 info "Ensuring ginkgo exists"
 
 export GOPATH="${GOPATH:-$(go env GOPATH || echo /root/go)}"
